@@ -20,6 +20,30 @@ export const appRoutes: Routes = [
         },
       },
       {
+        path: 'budgets',
+        canActivate: [authGuard],
+        loadComponent: () =>
+          import('./features/budgets/budget-list.component').then(
+            (m) => m.BudgetListComponent,
+          ),
+        data: {
+          title: 'Budgets',
+          icon: 'tabler-wallet',
+        },
+      },
+      {
+        path: 'budgets/:id',
+        canActivate: [authGuard],
+        loadComponent: () =>
+          import('./features/budgets/budget-detail.component').then(
+            (m) => m.BudgetDetailComponent,
+          ),
+        data: {
+          title: 'Détail du budget',
+          icon: 'tabler-report-money',
+        },
+      },
+      {
         path: 'profil',
         canActivate: [authGuard],
         loadComponent: () =>

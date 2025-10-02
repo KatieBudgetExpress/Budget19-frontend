@@ -1,0 +1,207 @@
+<section class="budget-detail">
+  <header class="budget-detail__header">
+    <a
+      routerLink="/budgets"
+      class="budget-detail__back"
+      aria-label="Retour à la liste des budgets"
+    >
+      <span aria-hidden="true">←</span>
+      <span>Retour aux budgets</span>
+    </a>
+    <h1 class="budget-detail__title">
+      <ng-container *ngIf="budget(); else defaultTitle">
+        {{ budget()?.name }}
+      </ng-container>
+      <ng-template #defaultTitle>Budget</ng-template>
+    </h1>
+  </header>
+
+  <p class="budget-detail__status" *ngIf="error()">
+    {{ error() }}
+  </p>
+
+  <p class="budget-detail__loading" *ngIf="isLoading()">Chargement du budget…</p>
+
+  <p
+    class="budget-detail__empty"
+    *ngIf="!isLoading() && !budget() && !error()"
+  >
+    Ce budget est introuvable ou n’a pas encore été chargé.
+  </p>
+
+  <ng-container *ngIf="!isLoading() && budget() as current">
+    <div class="budget-detail__layout">
+      <article class="budget-detail__summary">
+        <h2>Détails du budget</h2>
+
+        <dl class="budget-detail__metrics">
+          <div>
+            <dt>Montant alloué</dt>
+            <dd>{{ current.amount | currency:'EUR':'symbol' }}</dd>
+          </div>
+          <div *ngIf="current.spent !== undefined">
+            <dt>Dépenses enregistrées</dt>
+            <dd>{{ current.spent | currency:'EUR':'symbol' }}</dd>
+          </div>
+          <div>
+            <dt>Période</dt>
+            <dd class="budget-detail__period">
+              {{
+                current.period
+                  ? (current.period | titlecase)
+                  : 'Non défini'
+              }}
+            </dd>
+          </div>
+          <div *ngIf="current.startDate || current.endDate">
+            <dt>Validité</dt>
+            <dd>
+              <span *ngIf="current.startDate">{{ current.startDate | date:'longDate' }}</span>
+              <span *ngIf="current.startDate && current.endDate"> — </span>
+              <span *ngIf="current.endDate">{{ current.endDate | date:'longDate' }}</span>
+            </dd>
+          </div>
+        </dl>
+
+        <section class="budget-detail__description" *ngIf="current.description">
+          <h3>Notes</h3>
+          <p>{{ current.description }}</p>
+        </section>
+
+        <section class="budget-detail__categories" *ngIf="current.categories?.length">
+          <h3>Répartition par catégorie</h3>
+          <ul>
+            <li *ngFor="let category of current.categories; trackBy: trackByCategoryId">
+              <div class="budget-detail__category">
+                <span class="budget-detail__category-name">{{ category.name }}</span>
+                <span class="budget-detail__category-allocation">
+                  {{ category.allocated | currency:'EUR':'symbol' }}
+                </span>
+              </div>
+              <div
+                class="budget-detail__category-progress"
+                *ngIf="category.spent !== undefined"
+              >
+                Dépensé : {{ category.spent | currency:'EUR':'symbol' }}
+              </div>
+            </li>
+          </ul>
+        </section>
+
+        <dl class="budget-detail__meta">
+          <div *ngIf="current.createdAt">
+            <dt>Créé le</dt>
+            <dd>{{ current.createdAt | date:'longDate' }}</dd>
+          </div>
+          <div *ngIf="current.updatedAt">
+            <dt>Dernière mise à jour</dt>
+            <dd>
+              {{ current.updatedAt | date:'longDate' }}
+              ·
+              {{ current.updatedAt | date:'shortTime' }}
+            </dd>
+          </div>
+        </dl>
+      </article>
+
+      <form
+        class="budget-detail__form"
+        [formGroup]="budgetForm"
+        (ngSubmit)="onSubmit()"
+        novalidate
+      >
+        <h2>Modifier le budget</h2>
+
+        <div class="budget-detail__field">
+          <label for="budget-name">Nom du budget</label>
+          <input
+            id="budget-name"
+            type="text"
+            formControlName="name"
+            maxlength="120"
+            required
+          />
+          <p
+            class="budget-detail__error"
+            *ngIf="budgetForm.controls.name.touched && budgetForm.controls.name.invalid"
+          >
+            Le nom du budget est requis.
+          </p>
+        </div>
+
+        <div class="budget-detail__field budget-detail__field--split">
+          <div>
+            <label for="budget-amount">Montant alloué (€)</label>
+            <input
+              id="budget-amount"
+              type="number"
+              min="0"
+              step="0.01"
+              formControlName="amount"
+              required
+            />
+            <p
+              class="budget-detail__error"
+              *ngIf="budgetForm.controls.amount.touched && budgetForm.controls.amount.invalid"
+            >
+              Saisissez un montant valide supérieur ou égal à 0.
+            </p>
+          </div>
+
+          <div>
+            <label for="budget-period">Période</label>
+            <select id="budget-period" formControlName="period" required>
+              <option value="monthly">Mensuel</option>
+              <option value="quarterly">Trimestriel</option>
+              <option value="yearly">Annuel</option>
+              <option value="custom">Personnalisé</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="budget-detail__field budget-detail__field--split">
+          <div>
+            <label for="budget-start">Début</label>
+            <input id="budget-start" type="date" formControlName="startDate" />
+          </div>
+
+          <div>
+            <label for="budget-end">Fin</label>
+            <input id="budget-end" type="date" formControlName="endDate" />
+          </div>
+        </div>
+
+        <div class="budget-detail__field">
+          <label for="budget-description">Notes internes</label>
+          <textarea
+            id="budget-description"
+            rows="4"
+            formControlName="description"
+            placeholder="Informations complémentaires, hypothèses, objectifs…"
+          ></textarea>
+        </div>
+
+        <div class="budget-detail__actions">
+          <button
+            type="submit"
+            [disabled]="budgetForm.invalid || budgetForm.pristine || isSaving()"
+          >
+            <ng-container *ngIf="!isSaving(); else saving">
+              Enregistrer les modifications
+            </ng-container>
+            <ng-template #saving>Enregistrement…</ng-template>
+          </button>
+
+          <button
+            type="button"
+            class="budget-detail__secondary"
+            (click)="resetForm()"
+            [disabled]="isSaving() || budgetForm.pristine"
+          >
+            Réinitialiser
+          </button>
+        </div>
+      </form>
+    </div>
+  </ng-container>
+</section>

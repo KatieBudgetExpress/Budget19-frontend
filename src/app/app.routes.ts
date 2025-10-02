@@ -39,7 +39,7 @@ export const appRoutes: Routes = [
             (m) => m.BudgetDetailComponent,
           ),
         data: {
-          title: 'Budget',
+          title: 'Détail du budget',
           icon: 'tabler-report-money',
         },
       },

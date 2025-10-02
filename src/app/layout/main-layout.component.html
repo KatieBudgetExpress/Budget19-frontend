@@ -1,0 +1,52 @@
+<div class="layout" [class.layout--sidebar-hidden]="!isSidebarOpened()">
+  <aside class="layout__sidebar" *ngIf="visibleNavigation().length">
+    <div class="layout__brand">
+      <span class="layout__brand-logo">B19</span>
+      <span class="layout__brand-name">Budget19</span>
+    </div>
+    <nav class="layout__nav" aria-label="Navigation principale">
+      <a
+        *ngFor="let item of visibleNavigation(); trackBy: trackByPath"
+        class="layout__nav-link"
+        [routerLink]="item.path"
+        routerLinkActive="is-active"
+        [routerLinkActiveOptions]="{ exact: item.exact ?? true }"
+      >
+        <span class="layout__nav-icon" *ngIf="item.icon" [class]="item.icon" aria-hidden="true"></span>
+        <span class="layout__nav-label">{{ item.label }}</span>
+      </a>
+    </nav>
+  </aside>
+
+  <div class="layout__main">
+    <header class="layout__header">
+      <button
+        type="button"
+        class="layout__burger"
+        (click)="toggleSidebar()"
+        aria-label="Basculer le menu latéral"
+      >
+        ☰
+      </button>
+      <div class="layout__header-info">
+        <h1 class="layout__title">{{ pageTitle() }}</h1>
+        <p class="layout__subtitle" *ngIf="(currentUser$ | async) as user">
+          Connecté en tant que {{ user.displayName || user.email }}
+        </p>
+      </div>
+      <span class="layout__spacer"></span>
+      <button
+        type="button"
+        class="layout__logout"
+        *ngIf="(isAuthenticated$ | async)"
+        (click)="logout()"
+      >
+        Déconnexion
+      </button>
+    </header>
+
+    <main class="layout__content">
+      <router-outlet></router-outlet>
+    </main>
+  </div>
+</div>

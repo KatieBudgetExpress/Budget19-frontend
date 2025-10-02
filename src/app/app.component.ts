@@ -1,12 +1,20 @@
-import { Component } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
+import { NotificationsComponent } from './core/notifications/notifications.component';
+import { AuthService } from './core/auth/auth.service';
 
 @Component({
-  selector: 'app-root',
-  imports: [RouterOutlet],
+  standalone: true,
+  selector: 'budget19-root',
   templateUrl: './app.component.html',
-  styleUrl: './app.component.scss'
+  styleUrls: ['./app.component.scss'],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [RouterOutlet, NotificationsComponent],
 })
 export class AppComponent {
-  title = 'Budget19-frontend';
+  private readonly authService = inject(AuthService);
+
+  constructor() {
+    this.authService.restoreSession();
+  }
 }

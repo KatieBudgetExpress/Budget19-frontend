@@ -1,0 +1,53 @@
+<section class="login">
+  <div class="login__card">
+    <header class="login__header">
+      <h1>Connexion</h1>
+      <p>Accédez à la plateforme Budget19</p>
+    </header>
+
+    <form [formGroup]="loginForm" (ngSubmit)="onSubmit()" novalidate>
+      <div class="login__field">
+        <label for="email">Adresse e-mail</label>
+        <input
+          id="email"
+          type="email"
+          formControlName="email"
+          autocomplete="email"
+          required
+        />
+        <span class="login__error" *ngIf="loginForm.controls.email.touched && loginForm.controls.email.invalid">
+          Adresse e-mail invalide.
+        </span>
+      </div>
+
+      <div class="login__field">
+        <label for="password">Mot de passe</label>
+        <input
+          id="password"
+          type="password"
+          formControlName="password"
+          autocomplete="current-password"
+          required
+        />
+        <span
+          class="login__error"
+          *ngIf="loginForm.controls.password.touched && loginForm.controls.password.invalid"
+        >
+          Mot de passe requis (6 caractères minimum).
+        </span>
+      </div>
+
+      <label class="login__remember">
+        <input type="checkbox" formControlName="remember" />
+        <span>Se souvenir de moi</span>
+      </label>
+
+      <button type="submit" class="login__submit" [disabled]="isLoading()">
+        <ng-container *ngIf="!isLoading(); else loading">
+          Se connecter
+        </ng-container>
+        <ng-template #loading>Connexion…</ng-template>
+      </button>
+    </form>
+  </div>
+</section>

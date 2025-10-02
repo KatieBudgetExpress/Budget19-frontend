@@ -1,1 +1,18 @@
-/* You can add global styles to this file, and also import other style files */
+:root {
+  color-scheme: light;
+  --budget19-background: #f5f7fb;
+  --budget19-text: #111827;
+  --budget19-primary: #4f46e5;
+  --budget19-primary-contrast: #f9fafb;
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  background: var(--budget19-background);
+  color: var(--budget19-text);
+}

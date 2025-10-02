@@ -23,11 +23,18 @@ export interface BudgetTransaction {
   notes?: string;
 }
 
+export interface BudgetCategory {
+  id: string;
+  name: string;
+  allocation: number;
+}
+
 export interface Budget {
   id: string;
   name: string;
   description?: string;
   category: string;
+  categories?: BudgetCategory[];
   period: BudgetPeriod;
   currency: string;
   amount: number;
@@ -36,8 +43,30 @@ export interface Budget {
   endDate?: string | null;
   ownerId: string;
   status: BudgetStatus;
+  createdAt?: string;
+  updatedAt?: string;
   alerts?: BudgetAlert[];
   transactions?: BudgetTransaction[];
+}
+
+export interface UpdateBudgetPayload {
+  name?: string;
+  description?: string;
+  amount?: number;
+  category?: string;
+  categories?: BudgetCategory[];
+  startDate?: string;
+  endDate?: string | null;
+}
+
+export interface CreateBudgetPayload {
+  name: string;
+  description?: string;
+  amount: number;
+  category: string;
+  categories?: BudgetCategory[];
+  startDate: string;
+  endDate?: string | null;
 }
 
 @Injectable({
@@ -134,6 +163,60 @@ export class BudgetService {
       tap({
         error: (error) => this.handleBudgetError(error),
       }),
+    );
+  }
+
+  getById(id: string): Observable<Budget> {
+    this.setLoading(true);
+    return this.http.get<Budget>(`/api/budgets/${id}`).pipe(
+      tap((budget) => this.handleBudgetLoaded(budget)),
+      catchError((error) => {
+        console.warn(
+          `Échec getById(${id}), retour vers un budget simulé.`,
+          error,
+        );
+        const simulated = this.createMockBudget(id);
+        if (simulated) {
+          this.handleBudgetLoaded(simulated, { simulated: true });
+          return of(simulated);
+        }
+        throw error;
+      }),
+      finalize(() => this.setLoading(false)),
+    );
+  }
+
+  create(payload: CreateBudgetPayload): Observable<Budget> {
+    this.setLoading(true);
+    return this.http.post<Budget>('/api/budgets', payload).pipe(
+      tap((budget) => this.handleBudgetLoaded(budget)),
+      catchError((error) => {
+        this.handleGenericError(error);
+        const fallback: Budget = {
+          ...payload,
+          id: 'new-' + Date.now(),
+          spent: 0,
+          ownerId: 'user-mock',
+          period: payload.startDate ? 'monthly' : 'yearly',
+          currency: 'USD',
+          status: 'on-track',
+        };
+        this.handleBudgetLoaded(fallback, { simulated: true });
+        return of(fallback);
+      }),
+      finalize(() => this.setLoading(false)),
+    );
+  }
+
+  update(id: string, payload: UpdateBudgetPayload): Observable<Budget> {
+    this.setLoading(true);
+    return this.http.put<Budget>(`/api/budgets/${id}`, payload).pipe(
+      tap((budget) => this.handleBudgetLoaded(budget)),
+      catchError((error) => {
+        this.handleGenericError(error);
+        throw error;
+      }),
+      finalize(() => this.setLoading(false)),
     );
   }
 
@@ -269,6 +352,9 @@ export class BudgetService {
       alerts: budget.alerts?.map((alert) => ({ ...alert })) ?? [],
       transactions:
         budget.transactions?.map((transaction) => ({ ...transaction })) ?? [],
+      categories: budget.categories?.map((cat) => ({ ...cat })) ?? [],
+      createdAt: budget.createdAt ?? new Date().toISOString(),
+      updatedAt: budget.updatedAt ?? new Date().toISOString(),
     };
   }
 
@@ -296,188 +382,10 @@ const MOCK_BUDGETS: Budget[] = [
     endDate: null,
     ownerId: 'user-001',
     status: 'on-track',
-    alerts: [
-      {
-        id: 'alert-household-01',
-        message: 'La facture d’électricité a augmenté de 12 % en mai.',
-        severity: 'info',
-        createdAt: '2024-05-04T08:30:00.000Z',
-      },
-    ],
-    transactions: [
-      {
-        id: 'tx-household-001',
-        date: '2024-05-02T00:00:00.000Z',
-        label: 'Loyer appartement',
-        amount: 690,
-        type: 'expense',
-        category: 'Logement',
-      },
-      {
-        id: 'tx-household-002',
-        date: '2024-05-05T00:00:00.000Z',
-        label: 'Abonnement internet & TV',
-        amount: 52.9,
-        type: 'expense',
-        category: 'Télécom',
-      },
-      {
-        id: 'tx-household-003',
-        date: '2024-05-11T00:00:00.000Z',
-        label: 'Électricité',
-        amount: 89.5,
-        type: 'expense',
-        category: 'Énergie',
-        notes: 'Facture estimée avec ajustement saisonnier.',
-      },
-      {
-        id: 'tx-household-004',
-        date: '2024-05-12T00:00:00.000Z',
-        label: 'Assurance habitation',
-        amount: 40,
-        type: 'expense',
-        category: 'Assurances',
-      },
-    ],
-  },
-  {
-    id: 'mobility-2024',
-    name: 'Mobilité & transport',
-    description: 'Frais liés aux déplacements professionnels et personnels.',
-    category: 'Transport',
-    period: 'monthly',
-    currency: 'EUR',
-    amount: 620,
-    spent: 548.1,
-    startDate: '2024-01-01T00:00:00.000Z',
-    endDate: null,
-    ownerId: 'user-001',
-    status: 'at-risk',
-    alerts: [
-      {
-        id: 'alert-mobility-01',
-        message:
-          'Les dépenses carburant dépassent de 18 % la moyenne trimestrielle.',
-        severity: 'warning',
-        createdAt: '2024-05-08T15:10:00.000Z',
-      },
-    ],
-    transactions: [
-      {
-        id: 'tx-mobility-001',
-        date: '2024-05-03T00:00:00.000Z',
-        label: 'Pass Navigo',
-        amount: 84.1,
-        type: 'expense',
-        category: 'Transports en commun',
-      },
-      {
-        id: 'tx-mobility-002',
-        date: '2024-05-07T00:00:00.000Z',
-        label: 'Carburant - plein de mai',
-        amount: 96.5,
-        type: 'expense',
-        category: 'Carburant',
-      },
-      {
-        id: 'tx-mobility-003',
-        date: '2024-05-12T00:00:00.000Z',
-        label: 'Révision véhicule',
-        amount: 267.5,
-        type: 'expense',
-        category: 'Maintenance',
-        notes: 'Remplacement des filtres et vidange.',
-      },
-      {
-        id: 'tx-mobility-004',
-        date: '2024-05-14T00:00:00.000Z',
-        label: 'Indemnisation covoiturage',
-        amount: 30,
-        type: 'income',
-        category: 'Remboursement',
-      },
-      {
-        id: 'tx-mobility-005',
-        date: '2024-05-18T00:00:00.000Z',
-        label: 'Taxi aéroport',
-        amount: 130,
-        type: 'expense',
-        category: 'Transport occasionnel',
-      },
-    ],
-  },
-  {
-    id: 'vacation-2024',
-    name: 'Voyage d’été',
-    description: 'Préparation du séjour estival en famille.',
-    category: 'Loisirs',
-    period: 'yearly',
-    currency: 'EUR',
-    amount: 1800,
-    spent: 1942.85,
-    startDate: '2024-01-15T00:00:00.000Z',
-    endDate: '2024-08-30T00:00:00.000Z',
-    ownerId: 'user-001',
-    status: 'over-budget',
-    alerts: [
-      {
-        id: 'alert-vacation-01',
-        message:
-          'Le budget a été dépassé de 7,9 %. Pensez à ajuster vos réservations.',
-        severity: 'critical',
-        createdAt: '2024-05-15T09:45:00.000Z',
-      },
-    ],
-    transactions: [
-      {
-        id: 'tx-vacation-001',
-        date: '2024-04-12T00:00:00.000Z',
-        label: 'Acompte location',
-        amount: 520,
-        type: 'expense',
-        category: 'Hébergement',
-      },
-      {
-        id: 'tx-vacation-002',
-        date: '2024-04-27T00:00:00.000Z',
-        label: 'Billets d’avion',
-        amount: 840.5,
-        type: 'expense',
-        category: 'Transport',
-      },
-      {
-        id: 'tx-vacation-003',
-        date: '2024-05-09T00:00:00.000Z',
-        label: 'Excursions & activités',
-        amount: 248.35,
-        type: 'expense',
-        category: 'Activités',
-      },
-      {
-        id: 'tx-vacation-004',
-        date: '2024-05-13T00:00:00.000Z',
-        label: 'Remboursement de caution',
-        amount: 75,
-        type: 'income',
-        category: 'Remboursement',
-      },
-      {
-        id: 'tx-vacation-005',
-        date: '2024-05-16T00:00:00.000Z',
-        label: 'Ajustement devis',
-        amount: 259,
-        type: 'expense',
-        category: 'Divers',
-        notes: 'Surclassement hébergement.',
-      },
-      {
-        id: 'tx-vacation-006',
-        date: '2024-05-19T00:00:00.000Z',
-        label: 'Réservation restaurant',
-        amount: 150,
-        type: 'expense',
-        category: 'Restauration',
-      },
-    ],
+    createdAt: '2024-01-01T00:00:00.000Z',
+    updatedAt: '2024-05-20T12:00:00.000Z',
+    alerts: [],
+    transactions: [],
+    categories: [],
   },
 ];

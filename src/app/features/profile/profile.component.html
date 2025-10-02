@@ -1,4 +1,89 @@
 <section class="profile">
-  <h2>Profil utilisateur</h2>
-  <p>Les informations personnelles et préférences seront affichées ici.</p>
+  <header class="profile__header" *ngIf="displayedUser() as user; else missingUser">
+    <div class="profile__avatar">
+      {{ (user.displayName || user.email).slice(0, 1).toUpperCase() }}
+    </div>
+
+    <div class="profile__summary">
+      <h1>{{ user.displayName || 'Profil utilisateur' }}</h1>
+      <p>{{ user.email }}</p>
+
+      <ul class="profile__roles" *ngIf="user.roles?.length">
+        <li *ngFor="let role of user.roles">{{ role }}</li>
+      </ul>
+    </div>
+  </header>
+
+  <ng-template #missingUser>
+    <header class="profile__header profile__header--empty">
+      <div class="profile__summary">
+        <h1>Profil indisponible</h1>
+        <p>Connectez-vous pour visualiser et modifier vos informations personnelles.</p>
+      </div>
+    </header>
+  </ng-template>
+
+  <div class="profile__card">
+    <form class="profile__form" [formGroup]="profileForm" (ngSubmit)="onSubmit()" novalidate>
+      <div class="profile__fields">
+        <div class="profile__field">
+          <label for="displayName">Nom complet</label>
+          <input
+            id="displayName"
+            type="text"
+            formControlName="displayName"
+            autocomplete="name"
+            [attr.aria-invalid]="displayNameControl.invalid && displayNameControl.touched"
+            required
+          />
+          <span class="profile__error" *ngIf="displayNameControl.touched && displayNameControl.invalid">
+            Le nom complet est requis (60 caractères maximum).
+          </span>
+        </div>
+
+        <div class="profile__field">
+          <label for="email">Adresse e-mail</label>
+          <input
+            id="email"
+            type="email"
+            formControlName="email"
+            autocomplete="email"
+            [attr.aria-invalid]="emailControl.invalid && emailControl.touched"
+            required
+          />
+          <span class="profile__error" *ngIf="emailControl.touched && emailControl.invalid">
+            Adresse e-mail invalide.
+          </span>
+        </div>
+      </div>
+
+      <div class="profile__actions">
+        <button
+          type="submit"
+          class="profile__submit"
+          [disabled]="profileForm.invalid || profileForm.pristine || isSaving()"
+        >
+          <ng-container *ngIf="!isSaving(); else saving">Enregistrer</ng-container>
+          <ng-template #saving>Enregistrement…</ng-template>
+        </button>
+
+        <button
+          type="button"
+          class="profile__cancel"
+          (click)="onReset()"
+          [disabled]="profileForm.pristine || isSaving()"
+        >
+          Annuler
+        </button>
+      </div>
+    </form>
+
+    <p class="profile__helper">
+      Cette section simule la gestion du profil utilisateur. Les modifications sont conservées localement pendant votre session.
+    </p>
+
+    <p class="profile__last-save" *ngIf="lastSavedAt() as savedAt">
+      Dernière sauvegarde&nbsp;: {{ savedAt | date: 'medium' }}
+    </p>
+  </div>
 </section>

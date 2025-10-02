@@ -1,5 +1,6 @@
 import { Routes } from '@angular/router';
 import { MainLayoutComponent } from './layout/main-layout.component';
+import { authGuard } from './core/guards/auth.guard';
 
 export const appRoutes: Routes = [
   {
@@ -8,6 +9,7 @@ export const appRoutes: Routes = [
     children: [
       {
         path: 'dashboard',
+        canActivate: [authGuard],
         loadComponent: () =>
           import('./features/dashboard/dashboard.component').then(
             (m) => m.DashboardComponent,
@@ -19,6 +21,7 @@ export const appRoutes: Routes = [
       },
       {
         path: 'profil',
+        canActivate: [authGuard],
         loadComponent: () =>
           import('./features/profile/profile.component').then(
             (m) => m.ProfileComponent,
@@ -46,6 +49,17 @@ export const appRoutes: Routes = [
           ),
         data: {
           title: 'Connexion',
+          layout: 'blank',
+        },
+      },
+      {
+        path: 'reset-password',
+        loadComponent: () =>
+          import('./features/auth/reset-password.component').then(
+            (m) => m.ResetPasswordComponent,
+          ),
+        data: {
+          title: 'Réinitialisation du mot de passe',
           layout: 'blank',
         },
       },

@@ -1,171 +1,158 @@
-<section class="budget-list">
-  <header class="budget-list__header">
-    <div class="budget-list__intro">
-      <h1>Budgets</h1>
-      <p>
-        Visualisez vos enveloppes financières et identifiez rapidement les budgets à surveiller.
-      </p>
-    </div>
-
-    <div class="budget-list__actions">
-      <button
-        type="button"
-        class="budget-list__refresh"
-        (click)="refreshBudgets()"
-        [disabled]="isLoading()"
-      >
-        Actualiser
-      </button>
-    </div>
-  </header>
-
-  <section class="budget-list__alert" *ngIf="!isLoading() && error() as errorMessage">
-    <h2>Impossible de charger les budgets</h2>
-    <p>{{ errorMessage }}</p>
-  </section>
-
-  <section class="budget-list__summary" *ngIf="summary() as stats">
-    <div class="budget-list__summary-card">
-      <span class="budget-list__summary-label">Budgets actifs</span>
-      <strong class="budget-list__summary-value">{{ stats.budgetsCount }}</strong>
-    </div>
-    <div class="budget-list__summary-card">
-      <span class="budget-list__summary-label">Montant alloué</span>
-      <strong class="budget-list__summary-value">
-        {{ stats.totalAllocated | currency: stats.currency }}
-      </strong>
-    </div>
-    <div class="budget-list__summary-card">
-      <span class="budget-list__summary-label">Dépenses engagées</span>
-      <strong class="budget-list__summary-value">
-        {{ stats.totalSpent | currency: stats.currency }}
-      </strong>
-    </div>
-    <div class="budget-list__summary-card">
-      <span class="budget-list__summary-label">Disponible</span>
-      <strong
-        class="budget-list__summary-value"
-        [class.budget-list__summary-value--negative]="stats.totalRemaining < 0"
-      >
-        {{ stats.totalRemaining | currency: stats.currency }}
-      </strong>
-    </div>
-    <div class="budget-list__summary-card">
-      <span class="budget-list__summary-label">Sur la bonne voie</span>
-      <strong class="budget-list__summary-value">{{ stats.onTrackCount }}</strong>
-    </div>
-    <div class="budget-list__summary-card">
-      <span class="budget-list__summary-label">Sous surveillance</span>
-      <strong class="budget-list__summary-value">{{ stats.atRiskCount }}</strong>
-    </div>
-    <div class="budget-list__summary-card">
-      <span class="budget-list__summary-label">Budgets dépassés</span>
-      <strong class="budget-list__summary-value">{{ stats.exceededCount }}</strong>
-    </div>
-  </section>
-
-  <p class="budget-list__updated" *ngIf="lastUpdatedAt() as updated">
-    Dernière mise à jour : {{ updated | date: 'medium' }}
-  </p>
-
-  <div class="budget-list__loader" *ngIf="isLoading()">
-    <span class="budget-list__spinner" aria-hidden="true"></span>
-    <p>Chargement des budgets…</p>
+<section class="budget-detail">
+  <div class="budget-detail__loader" *ngIf="isLoading()">
+    <span class="budget-detail__spinner" aria-hidden="true"></span>
+    <p>Chargement du budget…</p>
   </div>
 
-  <section class="budget-list__empty" *ngIf="!isLoading() && !budgets().length">
-    <h2>Aucun budget défini</h2>
-    <p>
-      Créez votre premier budget pour suivre vos dépenses et atteindre vos objectifs financiers.
-    </p>
-  </section>
+  <ng-container *ngIf="!isLoading()">
+    <div class="budget-detail__alert budget-detail__alert--error" *ngIf="error() as errorMessage">
+      <h2>Impossible d’afficher ce budget</h2>
+      <p>{{ errorMessage }}</p>
+    </div>
 
-  <section class="budget-list__grid" *ngIf="budgets().length">
-    <article
-      class="budget-card"
-      *ngFor="let budget of budgets(); trackBy: trackByBudgetId"
-      [class.budget-card--warning]="budget.status === 'at-risk'"
-      [class.budget-card--danger]="budget.status === 'over-budget'"
-    >
-      <header class="budget-card__header">
-        <div>
-          <h2>
-            <a [routerLink]="['/budgets', budget.id]">{{ budget.name }}</a>
-          </h2>
-          <p class="budget-card__meta">
+    <ng-container *ngIf="budget() as budget; else missingBudget">
+      <header class="budget-detail__header">
+        <div class="budget-detail__title">
+          <h1>{{ budget.name }}</h1>
+          <p class="budget-detail__category">
             {{ budget.category }} • {{ budget.period | titlecase }}
+          </p>
+          <p class="budget-detail__dates">
+            Du {{ budget.startDate | date: 'd MMMM y' }}
+            au
+            {{ budget.endDate ? (budget.endDate | date: 'd MMMM y') : 'budget en cours' }}
+          </p>
+          <p class="budget-detail__description" *ngIf="budget.description">
+            {{ budget.description }}
           </p>
         </div>
 
-        <span
-          class="budget-card__badge"
-          [attr.aria-label]="statusMetadata[budget.status].description"
-          [class.budget-card__badge--success]="budget.status === 'on-track'"
-          [class.budget-card__badge--warning]="budget.status === 'at-risk'"
-          [class.budget-card__badge--danger]="budget.status === 'over-budget'"
-        >
-          {{ statusMetadata[budget.status].label }}
-        </span>
+        <div class="budget-detail__status">
+          <span
+            class="budget-detail__badge"
+            [class.budget-detail__badge--success]="budget.status === 'on-track'"
+            [class.budget-detail__badge--warning]="budget.status === 'at-risk'"
+            [class.budget-detail__badge--danger]="budget.status === 'over-budget'"
+          >
+            {{ budget.status === 'on-track' ? 'Sur la bonne voie' : budget.status === 'at-risk' ? 'Sous surveillance' : 'Budget dépassé' }}
+          </span>
+          <p class="budget-detail__status-description">
+            {{ budget.status === 'on-track'
+              ? 'Les dépenses restent inférieures au montant prévu.'
+              : budget.status === 'at-risk'
+                ? 'Ce budget nécessite une vigilance particulière.'
+                : 'Le montant alloué a été dépassé, ajustez vos dépenses.' }}
+          </p>
+        </div>
       </header>
 
-      <div class="budget-card__amounts">
-        <dl>
-          <div class="budget-card__stat">
-            <dt>Alloué</dt>
-            <dd>{{ budget.amount | currency: budget.currency }}</dd>
-          </div>
-          <div class="budget-card__stat">
-            <dt>Dépensé</dt>
-            <dd>{{ budget.spent | currency: budget.currency }}</dd>
-          </div>
-          <div class="budget-card__stat">
-            <dt>Disponible</dt>
-            <dd [class.budget-card__amount--negative]="getRemainingAmount(budget) < 0">
-              {{ getRemainingAmount(budget) | currency: budget.currency }}
-            </dd>
-          </div>
-        </dl>
-      </div>
+      <section class="budget-detail__summary">
+        <article class="budget-detail__card">
+          <h2>Montant alloué</h2>
+          <p class="budget-detail__value">
+            {{ budget.amount | currency: budget.currency }}
+          </p>
+          <p class="budget-detail__helper">
+            Budget initial défini pour cette enveloppe.
+          </p>
+        </article>
 
-      <div
-        class="budget-card__progress"
-        role="progressbar"
-        aria-valuemin="0"
-        [attr.aria-valuenow]="budget.spent"
-        [attr.aria-valuemax]="budget.amount"
-      >
-        <div class="budget-card__progress-bar" [style.width.%]="getBudgetProgress(budget)"></div>
-      </div>
-      <p class="budget-card__progress-label">
-        {{ (budget.amount ? budget.spent / budget.amount : 0) | percent: '1.0-0' }} du budget utilisé
+        <article class="budget-detail__card">
+          <h2>Dépenses engagées</h2>
+          <p class="budget-detail__value">
+            {{ budget.spent | currency: budget.currency }}
+          </p>
+          <p class="budget-detail__helper">
+            Représente {{ (budget.amount ? budget.spent / budget.amount : 0) | percent: '1.0-0' }} du budget.
+          </p>
+        </article>
+
+        <article class="budget-detail__card">
+          <h2>Disponible</h2>
+          <p class="budget-detail__value" [class.budget-detail__value--negative]="budget.amount - budget.spent < 0">
+            {{ budget.amount - budget.spent | currency: budget.currency }}
+          </p>
+          <p class="budget-detail__helper">
+            Montant restant après prise en compte des transactions enregistrées.
+          </p>
+        </article>
+      </section>
+
+      <section class="budget-detail__alerts" *ngIf="budget.alerts?.length">
+        <h2>Alertes et recommandations</h2>
+        <ul>
+          <li *ngFor="let alert of budget.alerts">
+            <span
+              class="budget-detail__alert-indicator"
+              [class.budget-detail__alert-indicator--info]="alert.severity === 'info'"
+              [class.budget-detail__alert-indicator--warning]="alert.severity === 'warning'"
+              [class.budget-detail__alert-indicator--critical]="alert.severity === 'critical'"
+              aria-hidden="true"
+            ></span>
+            <div class="budget-detail__alert-content">
+              <p>{{ alert.message }}</p>
+              <small>Signalée le {{ alert.createdAt | date: 'mediumDate' }}</small>
+            </div>
+          </li>
+        </ul>
+      </section>
+
+      <section class="budget-detail__transactions">
+        <div class="budget-detail__transactions-header">
+          <h2>Activité récente</h2>
+          <p *ngIf="budget.transactions?.length; else noTransactions">
+            {{ budget.transactions.length }} transaction{{ budget.transactions.length > 1 ? 's' : '' }} enregistrée{{ budget.transactions.length > 1 ? 's' : '' }} ce mois-ci.
+          </p>
+        </div>
+
+        <table *ngIf="budget.transactions?.length">
+          <thead>
+            <tr>
+              <th scope="col">Date</th>
+              <th scope="col">Libellé</th>
+              <th scope="col">Catégorie</th>
+              <th scope="col" class="budget-detail__amount-column">Montant</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let transaction of budget.transactions">
+              <td>{{ transaction.date | date: 'dd MMM' }}</td>
+              <td>
+                <span class="budget-detail__transaction-label">{{ transaction.label }}</span>
+                <small class="budget-detail__transaction-notes" *ngIf="transaction.notes">
+                  {{ transaction.notes }}
+                </small>
+              </td>
+              <td>{{ transaction.category || 'Autre' }}</td>
+              <td class="budget-detail__amount-column">
+                <span
+                  class="budget-detail__transaction-amount"
+                  [class.budget-detail__transaction-amount--expense]="transaction.type === 'expense'"
+                  [class.budget-detail__transaction-amount--income]="transaction.type === 'income'"
+                  [class.budget-detail__transaction-amount--adjustment]="transaction.type === 'adjustment'"
+                >
+                  {{ (transaction.type === 'expense' ? -transaction.amount : transaction.amount) | currency: budget.currency }}
+                </span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+
+        <ng-template #noTransactions>
+          <p class="budget-detail__empty">
+            Aucune transaction n’a encore été enregistrée pour cette enveloppe.
+          </p>
+        </ng-template>
+      </section>
+    </ng-container>
+  </ng-container>
+
+  <ng-template #missingBudget>
+    <div class="budget-detail__empty">
+      <h2>Budget introuvable</h2>
+      <p>
+        Impossible d’identifier ce budget. Vérifiez l’URL ou sélectionnez un budget depuis la liste.
       </p>
-
-      <ul class="budget-card__alerts" *ngIf="budget.alerts?.length">
-        <li *ngFor="let alert of budget.alerts">
-          <span
-            class="budget-card__alert-indicator"
-            [class.budget-card__alert-indicator--info]="alert.severity === 'info'"
-            [class.budget-card__alert-indicator--warning]="alert.severity === 'warning'"
-            [class.budget-card__alert-indicator--critical]="alert.severity === 'critical'"
-            aria-hidden="true"
-          ></span>
-          <span class="budget-card__alert-message">{{ alert.message }}</span>
-        </li>
-      </ul>
-
-      <footer class="budget-card__footer">
-        <span class="budget-card__period">
-          Période : {{ budget.startDate | date: 'MMM y' }} – {{ budget.endDate ? (budget.endDate | date: 'MMM y') : 'en cours' }}
-        </span>
-        <a
-          class="budget-card__link"
-          [routerLink]="['/budgets', budget.id]"
-          aria-label="Consulter le budget {{ budget.name }}"
-        >
-          Détails du budget
-        </a>
-      </footer>
-    </article>
-  </section>
+    </div>
+  </ng-template>
 </section>
-

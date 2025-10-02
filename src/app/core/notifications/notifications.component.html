@@ -1,0 +1,28 @@
+<section
+  class="notifications"
+  *ngIf="notifications().length"
+  aria-live="assertive"
+  aria-atomic="true"
+>
+  <article
+    class="notifications__item"
+    *ngFor="let notification of notifications(); trackBy: trackById"
+    [ngClass]="['notifications__item--' + notification.type]"
+  >
+    <div class="notifications__body">
+      <h2 class="notifications__title" *ngIf="notification.title">
+        {{ notification.title }}
+      </h2>
+      <p class="notifications__message">{{ notification.message }}</p>
+    </div>
+    <button
+      type="button"
+      class="notifications__close"
+      *ngIf="notification.dismissible"
+      (click)="dismiss(notification)"
+      aria-label="Fermer la notification"
+    >
+      ×
+    </button>
+  </article>
+</section>

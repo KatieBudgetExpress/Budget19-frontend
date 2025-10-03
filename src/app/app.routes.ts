@@ -44,6 +44,28 @@ export const appRoutes: Routes = [
         },
       },
       {
+        path: 'transactions',
+        canActivate: [authGuard],
+        loadComponent: () =>
+          import('./features/transactions/transaction-list.component').then(
+            (m) => m.TransactionListComponent,
+          ),
+        data: {
+          title: 'Transactions',
+        },
+      },
+      {
+        path: 'transactions/:id',
+        canActivate: [authGuard],
+        loadComponent: () =>
+          import('./features/transactions/transaction-detail.component').then(
+            (m) => m.TransactionDetailComponent,
+          ),
+        data: {
+          title: 'Détail de la transaction',
+        },
+      },
+      {
         path: 'postes',
         canActivate: [authGuard],
         loadComponent: () =>

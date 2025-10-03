@@ -169,14 +169,17 @@ export class BudgetDetailComponent {
 
   private buildUpdatePayload(): UpdateBudgetPayload {
     const raw = this.budgetForm.getRawValue();
+    const startDate = this.normalizeDate(raw.startDate);
+    const endDate = this.normalizeDate(raw.endDate);
+    const description = this.normalizeText(raw.description);
 
     return {
       name: raw.name.trim(),
       amount: Number(raw.amount),
       period: raw.period,
-      startDate: this.normalizeDate(raw.startDate),
-      endDate: this.normalizeDate(raw.endDate),
-      description: this.normalizeText(raw.description),
+      startDate: startDate ?? undefined,
+      endDate,
+      description: description ?? undefined,
     };
   }
 

@@ -1,0 +1,26 @@
+<div class="chart-card">
+  <header class="chart-card__header">
+    <div class="chart-card__titles">
+      <h3>Dépenses</h3>
+      <p class="chart-card__subtitle">Montant par période</p>
+    </div>
+    <div class="chart-card__total" *ngIf="hasData">
+      {{ totalAmount | currency: (currency || 'EUR') : 'symbol' : '1.0-2' : 'fr' }}
+    </div>
+  </header>
+
+  <div class="chart-card__body" *ngIf="hasData; else noExpenseData">
+    <canvas
+      baseChart
+      [type]="chartType"
+      [data]="barChartData"
+      [options]="barChartOptions"
+      role="img"
+      aria-label="Évolution des dépenses par période">
+    </canvas>
+  </div>
+
+  <ng-template #noExpenseData>
+    <p class="chart-card__empty">Aucune dépense disponible pour la période sélectionnée.</p>
+  </ng-template>
+</div>

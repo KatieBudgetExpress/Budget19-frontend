@@ -53,17 +53,17 @@ export interface Budget {
 
 export interface UpdateBudgetPayload {
   name?: string;
-  description?: string;
+  description?: string | undefined;
   amount?: number;
   category?: string;
   categories?: BudgetCategory[];
-  startDate?: string;
+  startDate?: string | undefined;
   endDate?: string | null;
 }
 
 export interface CreateBudgetPayload {
   name: string;
-  description?: string;
+  description?: string | undefined;
   amount: number;
   category: string;
   categories?: BudgetCategory[];
@@ -391,3 +391,4 @@ const MOCK_BUDGETS: Budget[] = [
     categories: [],
   },
 ];
+

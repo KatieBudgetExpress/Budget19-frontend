@@ -1,0 +1,26 @@
+<div class="chart-card">
+  <header class="chart-card__header">
+    <div class="chart-card__titles">
+      <h3>Répartition des dépenses</h3>
+      <p class="chart-card__subtitle">Montant par catégorie</p>
+    </div>
+    <div class="chart-card__total" *ngIf="hasData">
+      {{ totalAmount | currency: (currency || 'EUR') : 'symbol' : '1.0-2' : 'fr' }}
+    </div>
+  </header>
+
+  <div class="chart-card__body" *ngIf="hasData; else noPieData">
+    <canvas
+      baseChart
+      [type]="'pie'"
+      [data]="pieChartData"
+      [options]="pieChartOptions"
+      role="img"
+      aria-label="Répartition des dépenses par catégorie">
+    </canvas>
+  </div>
+
+  <ng-template #noPieData>
+    <p class="chart-card__empty">Aucune dépense enregistrée pour afficher ce graphique.</p>
+  </ng-template>
+</div>

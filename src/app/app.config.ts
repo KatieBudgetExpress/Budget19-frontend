@@ -15,6 +15,6 @@ export const appConfig: ApplicationConfig = {
       withFetch(),
       withInterceptors([loggingInterceptor, authTokenInterceptor]),
     ),
-    { provide: DEFAULT_CURRENCY_CODE, useValue: 'CAD' } // 👈 Devise par défaut
+    { provide: DEFAULT_CURRENCY_CODE, useValue: 'CAD' } // ✅ Devise par défaut
   ],
 };

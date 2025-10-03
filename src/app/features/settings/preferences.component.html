@@ -1,0 +1,140 @@
+<section class="preferences">
+  <header class="preferences__header">
+    <div class="preferences__header-content">
+      <h2>Préférences utilisateur</h2>
+      <p>Personnalisez votre expérience en choisissant vos réglages favoris.</p>
+    </div>
+
+    <button
+      type="button"
+      class="preferences__refresh"
+      (click)="refresh()"
+      [disabled]="loading || saving"
+    >
+      Actualiser
+    </button>
+  </header>
+
+  <div *ngIf="error" class="preferences__alert" role="alert">
+    {{ error }}
+  </div>
+
+  <div *ngIf="loading" class="preferences__loading" aria-live="polite">
+    Chargement des préférences…
+  </div>
+
+  <form
+    *ngIf="!loading"
+    class="preferences__form"
+    [formGroup]="preferencesForm"
+    (ngSubmit)="onSubmit()"
+    novalidate
+  >
+    <div class="preferences__fields">
+      <div class="preferences__field">
+        <label class="preferences__label" for="preferences-language">
+          Langue
+        </label>
+        <select
+          class="preferences__select"
+          id="preferences-language"
+          formControlName="language"
+          [attr.aria-invalid]="languageControl.invalid && (languageControl.dirty || languageControl.touched)"
+        >
+          <option *ngFor="let language of languages" [value]="language.value">
+            {{ language.label }}
+          </option>
+        </select>
+        <p
+          *ngIf="languageControl.invalid && (languageControl.dirty || languageControl.touched)"
+          class="preferences__field-error"
+        >
+          Veuillez sélectionner une langue.
+        </p>
+      </div>
+
+      <div class="preferences__field">
+        <label class="preferences__label" for="preferences-currency">
+          Devise
+        </label>
+        <select
+          class="preferences__select"
+          id="preferences-currency"
+          formControlName="currency"
+          [attr.aria-invalid]="currencyControl.invalid && (currencyControl.dirty || currencyControl.touched)"
+        >
+          <option *ngFor="let currency of currencies" [value]="currency.value">
+            {{ currency.label }}
+          </option>
+        </select>
+        <p
+          *ngIf="currencyControl.invalid && (currencyControl.dirty || currencyControl.touched)"
+          class="preferences__field-error"
+        >
+          Veuillez sélectionner une devise.
+        </p>
+      </div>
+
+      <div class="preferences__field preferences__field--theme">
+        <span class="preferences__label" id="preferences-theme-label">
+          Thème
+        </span>
+        <div
+          class="preferences__theme-options"
+          role="radiogroup"
+          [attr.aria-labelledby]="'preferences-theme-label'"
+        >
+          <label
+            *ngFor="let theme of themes"
+            class="preferences__radio"
+            [class.preferences__radio--selected]="themeControl.value === theme.value"
+          >
+            <input
+              class="preferences__radio-input"
+              type="radio"
+              formControlName="theme"
+              [value]="theme.value"
+            />
+            <span class="preferences__radio-label">{{ theme.label }}</span>
+          </label>
+        </div>
+        <p
+          *ngIf="themeControl.invalid && (themeControl.dirty || themeControl.touched)"
+          class="preferences__field-error"
+        >
+          Veuillez choisir un thème d’affichage.
+        </p>
+      </div>
+    </div>
+
+    <div class="preferences__actions">
+      <button
+        type="submit"
+        class="preferences__submit"
+        [disabled]="preferencesForm.invalid || saving"
+      >
+        <span
+          *ngIf="saving"
+          class="preferences__submit-spinner"
+          aria-hidden="true"
+        ></span>
+        <span>
+          {{ saving ? 'Enregistrement…' : 'Enregistrer les préférences' }}
+        </span>
+      </button>
+
+      <button
+        type="button"
+        class="preferences__reset"
+        (click)="onReset()"
+        [disabled]="isResetDisabled"
+      >
+        Réinitialiser
+      </button>
+    </div>
+
+    <p *ngIf="lastSavedAt" class="preferences__last-save">
+      Dernière sauvegarde effectuée le {{ lastSavedAt | date: 'medium' }}.
+    </p>
+  </form>
+</section>

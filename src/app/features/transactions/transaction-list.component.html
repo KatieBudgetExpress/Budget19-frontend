@@ -1,0 +1,105 @@
+<div class="transaction-list">
+  <div class="transaction-list__header">
+    <div class="transaction-list__headline">
+      <h1 class="transaction-list__title">Transactions</h1>
+      <p class="transaction-list__subtitle">
+        Visualisez et gérez vos opérations financières quotidiennes.
+      </p>
+    </div>
+    <button type="button" class="transaction-list__create" (click)="createTransaction()">
+      ➕ Nouvelle transaction
+    </button>
+  </div>
+
+  <div *ngIf="loading" class="transaction-list__status" role="status" aria-live="polite">
+    <span class="transaction-list__spinner" aria-hidden="true"></span>
+    <span>Chargement des transactions…</span>
+  </div>
+
+  <div *ngIf="error" class="transaction-list__status transaction-list__status--error" role="alert">
+    <span>{{ error }}</span>
+    <button type="button" class="transaction-list__retry" (click)="fetchTransactions()">
+      Réessayer
+    </button>
+  </div>
+
+  <div
+    *ngIf="!loading && !error && transactions.length === 0"
+    class="transaction-list__empty"
+  >
+    <h2>Pas encore de transaction</h2>
+    <p>Ajoutez votre première transaction pour commencer à suivre votre budget.</p>
+    <button type="button" class="transaction-list__create" (click)="createTransaction()">
+      ➕ Nouvelle transaction
+    </button>
+  </div>
+
+  <div
+    *ngIf="!loading && !error && transactions.length > 0"
+    class="transaction-list__table-wrapper"
+  >
+    <table class="transaction-table">
+      <thead>
+        <tr>
+          <th scope="col">Date</th>
+          <th scope="col">Libellé</th>
+          <th scope="col">Montant</th>
+          <th scope="col">Catégorie</th>
+          <th scope="col" class="transaction-table__actions-header">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let transaction of transactions">
+          <td data-label="Date">
+            {{ transaction.date | date: 'mediumDate' }}
+          </td>
+          <td data-label="Libellé">
+            <span class="transaction-table__label">{{ transaction.libelle }}</span>
+            <span
+              class="transaction-table__badge"
+              [ngClass]="{
+                'transaction-table__badge--revenu': transaction.type === 'revenu',
+                'transaction-table__badge--depense': transaction.type === 'depense',
+                'transaction-table__badge--transfert': transaction.type === 'transfert'
+              }"
+            >
+              {{ transaction.type | titlecase }}
+            </span>
+          </td>
+          <td data-label="Montant">
+            <span
+              class="transaction-table__amount"
+              [ngClass]="{
+                'transaction-table__amount--positive': transaction.type === 'revenu',
+                'transaction-table__amount--negative': transaction.type === 'depense'
+              }"
+            >
+              {{ transaction.montant | currency }}
+            </span>
+          </td>
+          <td data-label="Catégorie">
+            <span class="transaction-table__category">
+              {{ transaction.categorie || 'Non définie' }}
+            </span>
+          </td>
+          <td data-label="Actions" class="transaction-table__actions">
+            <button
+              type="button"
+              class="transaction-table__button transaction-table__button--view"
+              (click)="viewDetail(transaction)"
+            >
+              👁️ Voir
+            </button>
+            <button
+              type="button"
+              class="transaction-table__button transaction-table__button--delete"
+              (click)="deleteTransaction(transaction.id)"
+            >
+              🗑️ Supprimer
+            </button>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>

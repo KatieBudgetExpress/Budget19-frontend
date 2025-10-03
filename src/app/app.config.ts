@@ -1,4 +1,4 @@
-import { ApplicationConfig, provideZoneChangeDetection } from '@angular/core';
+import { ApplicationConfig, provideZoneChangeDetection, DEFAULT_CURRENCY_CODE } from '@angular/core';
 import { provideRouter, withComponentInputBinding } from '@angular/router';
 import { provideHttpClient, withFetch, withInterceptors } from '@angular/common/http';
 import { provideAnimations } from '@angular/platform-browser/animations';
@@ -15,5 +15,6 @@ export const appConfig: ApplicationConfig = {
       withFetch(),
       withInterceptors([loggingInterceptor, authTokenInterceptor]),
     ),
+    { provide: DEFAULT_CURRENCY_CODE, useValue: 'CAD' } // ✅ Devise par défaut
   ],
 };

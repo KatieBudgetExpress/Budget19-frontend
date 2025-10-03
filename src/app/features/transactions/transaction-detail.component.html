@@ -1,0 +1,136 @@
+<div class="transaction-detail">
+  <header class="transaction-detail__header">
+    <h1 class="transaction-detail__title">
+      {{ isNew ? 'Nouvelle transaction' : 'Modifier la transaction' }}
+    </h1>
+    <p class="transaction-detail__subtitle">
+      Renseignez les informations essentielles pour votre suivi financier.
+    </p>
+  </header>
+
+  <div *ngIf="loading" class="transaction-detail__status" role="status" aria-live="polite">
+    Chargement de la transaction…
+  </div>
+
+  <div *ngIf="error" class="transaction-detail__error" role="alert">
+    {{ error }}
+  </div>
+
+  <form
+    class="transaction-detail__form"
+    [formGroup]="transactionForm"
+    (ngSubmit)="saveTransaction()"
+    novalidate
+  >
+    <div class="form-field">
+      <label for="transaction-date">Date</label>
+      <input
+        id="transaction-date"
+        type="date"
+        formControlName="date"
+        [class.form-field__control--invalid]="controls.date.touched && controls.date.invalid"
+        [disabled]="loading || saving"
+      />
+      <small
+        *ngIf="controls.date.touched && controls.date.invalid"
+        class="form-field__error"
+      >
+        La date est obligatoire.
+      </small>
+    </div>
+
+    <div class="form-field">
+      <label for="transaction-libelle">Libellé</label>
+      <input
+        id="transaction-libelle"
+        type="text"
+        formControlName="libelle"
+        placeholder="Ex. Salaire, loyer, remboursement…"
+        [class.form-field__control--invalid]="controls.libelle.touched && controls.libelle.invalid"
+        [disabled]="loading || saving"
+      />
+      <small
+        *ngIf="controls.libelle.touched && controls.libelle.invalid"
+        class="form-field__error"
+      >
+        Le libellé est requis (160 caractères max).
+      </small>
+    </div>
+
+    <div class="form-field form-field--inline">
+      <div class="form-field__column">
+        <label for="transaction-montant">Montant</label>
+        <input
+          id="transaction-montant"
+          type="number"
+          step="0.01"
+          formControlName="montant"
+          [class.form-field__control--invalid]="controls.montant.touched && controls.montant.invalid"
+          [disabled]="loading || saving"
+        />
+        <small
+          *ngIf="controls.montant.touched && controls.montant.invalid"
+          class="form-field__error"
+        >
+          Indiquez le montant de la transaction.
+        </small>
+      </div>
+
+      <div class="form-field__column">
+        <label for="transaction-type">Type</label>
+        <select
+          id="transaction-type"
+          formControlName="type"
+          [class.form-field__control--invalid]="controls.type.touched && controls.type.invalid"
+          [disabled]="loading || saving"
+        >
+          <option *ngFor="let option of typeOptions" [value]="option.value">
+            {{ option.label }}
+          </option>
+        </select>
+        <small
+          *ngIf="controls.type.touched && controls.type.invalid"
+          class="form-field__error"
+        >
+          Sélectionnez un type de transaction.
+        </small>
+      </div>
+    </div>
+
+    <div class="form-field">
+      <label for="transaction-categorie">Catégorie</label>
+      <input
+        id="transaction-categorie"
+        type="text"
+        formControlName="categorie"
+        placeholder="Ex. Logement, Salaire, Épargne…"
+        [class.form-field__control--invalid]="controls.categorie.touched && controls.categorie.invalid"
+        [disabled]="loading || saving"
+      />
+      <small
+        *ngIf="controls.categorie.touched && controls.categorie.invalid"
+        class="form-field__error"
+      >
+        La catégorie est obligatoire (80 caractères max).
+      </small>
+    </div>
+
+    <div class="form-actions">
+      <button
+        type="submit"
+        class="transaction-detail__submit"
+        [disabled]="transactionForm.invalid || saving || loading"
+      >
+        💾 Enregistrer
+      </button>
+      <button
+        type="button"
+        class="transaction-detail__back"
+        (click)="goBack()"
+        [disabled]="saving"
+      >
+        ↩️ Retour vers la liste
+      </button>
+    </div>
+  </form>
+</div>

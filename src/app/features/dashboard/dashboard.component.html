@@ -1,20 +1,182 @@
 <section class="dashboard">
   <header class="dashboard__header">
-    <h2>Bienvenue sur Budget19</h2>
-    <p>Cette zone affichera les indicateurs clés et les actions rapides.</p>
+    <div class="dashboard__intro">
+      <p class="dashboard__subtitle">Vue d’ensemble</p>
+      <h1 class="dashboard__title">Tableau de bord financier</h1>
+      <p class="dashboard__description">
+        Consultez en un coup d’œil vos indicateurs clés pour piloter vos budgets et prioriser vos actions.
+      </p>
+      <p class="dashboard__updated" *ngIf="lastUpdatedAt() as updatedAt">
+        Dernière synchronisation le {{ updatedAt | date: 'd MMMM y à HH:mm' }}
+      </p>
+    </div>
+
+    <div class="dashboard__cta">
+      <a
+        routerLink="/transactions"
+        class="dashboard__button"
+        data-testid="dashboard-transactions-link"
+      >
+        Consulter les transactions
+        <span class="dashboard__button-icon" aria-hidden="true">→</span>
+      </a>
+      <button
+        type="button"
+        class="dashboard__button dashboard__button--ghost"
+        (click)="refresh({ forceRefresh: true })"
+      >
+        Actualiser les données
+      </button>
+    </div>
   </header>
-  <div class="dashboard__grid">
-    <article class="dashboard__card">
-      <h3>Solde général</h3>
-      <p>--</p>
-    </article>
-    <article class="dashboard__card">
-      <h3>Dépenses du mois</h3>
-      <p>--</p>
-    </article>
-    <article class="dashboard__card">
-      <h3>Prochaines échéances</h3>
-      <p>--</p>
-    </article>
+
+  <div class="dashboard__loader" *ngIf="isLoading()">
+    <span class="dashboard__spinner" aria-hidden="true"></span>
+    <p>Mise à jour des indicateurs…</p>
   </div>
+
+  <div class="dashboard__error" *ngIf="!isLoading() && error() as errorMessage">
+    <div>
+      <h2>Impossible de charger le tableau de bord</h2>
+      <p>{{ errorMessage }}</p>
+    </div>
+    <button
+      type="button"
+      class="dashboard__button dashboard__button--ghost"
+      (click)="refresh({ forceRefresh: true })"
+    >
+      Réessayer
+    </button>
+  </div>
+
+  <ng-container *ngIf="!isLoading() && hasData(); else emptyState">
+    <ng-container *ngIf="summary() as summary">
+      <ng-container *ngIf="summaryCards() as cards">
+        <section class="dashboard__summary">
+          <article
+            class="dashboard__summary-card"
+            *ngFor="let card of cards; trackBy: trackBySummary"
+            [class.dashboard__summary-card--positive]="card.tone === 'positive'"
+            [class.dashboard__summary-card--negative]="card.tone === 'negative'"
+          >
+            <header class="dashboard__summary-header">
+              <h2>{{ card.title }}</h2>
+              <span
+                class="dashboard__summary-trend"
+                [class.is-positive]="card.tone === 'positive'"
+                [class.is-negative]="card.tone === 'negative'"
+              >
+                <span class="dashboard__trend-indicator" aria-hidden="true">
+                  {{ card.variation > 0 ? '▲' : card.variation < 0 ? '▼' : '•' }}
+                </span>
+                <span>
+                  {{ card.variation > 0 ? '+' : '' }}{{ card.variation | number: '1.0-1' }} %
+                </span>
+              </span>
+            </header>
+
+            <p
+              class="dashboard__summary-value"
+              [class.is-negative]="card.key === 'balance' && card.amount < 0"
+            >
+              {{ card.amount | currency: summary.currency }}
+            </p>
+            <p class="dashboard__summary-helper">{{ card.helper }}</p>
+          </article>
+        </section>
+      </ng-container>
+
+      <section class="dashboard__charts">
+        <article class="dashboard__chart-card dashboard__chart-card--ratio" *ngIf="pieChartData() as ratio">
+          <header class="dashboard__chart-header">
+            <h2>Répartition revenus / dépenses</h2>
+            <p>Équilibre global calculé sur vos données actuelles.</p>
+          </header>
+          <div class="dashboard__chart-body">
+            <budget19-pie-chart
+              *ngIf="ratio.total > 0; else noPieData"
+              [data]="ratio.slices"
+              [total]="ratio.total"
+              [currency]="summary.currency"
+            ></budget19-pie-chart>
+          </div>
+        </article>
+
+        <article class="dashboard__chart-card" *ngIf="revenueTrend() as revenueSeries">
+          <header class="dashboard__chart-header">
+            <h2>Évolution des revenus</h2>
+            <p>Tendance sur les {{ revenueSeries.length }} derniers mois.</p>
+          </header>
+          <div class="dashboard__chart-body">
+            <budget19-revenu-chart
+              *ngIf="hasSeries(revenueSeries); else noRevenueData"
+              [series]="revenueSeries"
+              [currency]="summary.currency"
+            ></budget19-revenu-chart>
+          </div>
+        </article>
+
+        <article class="dashboard__chart-card" *ngIf="expenseTrend() as expenseSeries">
+          <header class="dashboard__chart-header">
+            <h2>Évolution des dépenses</h2>
+            <p>Visualisez les sorties de trésorerie sur la même période.</p>
+          </header>
+          <div class="dashboard__chart-body">
+            <budget19-depense-chart
+              *ngIf="hasSeries(expenseSeries); else noExpenseData"
+              [series]="expenseSeries"
+              [currency]="summary.currency"
+            ></budget19-depense-chart>
+          </div>
+        </article>
+      </section>
+
+      <ng-container *ngIf="qualitativeInsights() as insights">
+        <section class="dashboard__insights" *ngIf="insights.length">
+          <h2>Ce qu’il faut retenir</h2>
+          <ul>
+            <li
+              *ngFor="let insight of insights; trackBy: trackByInsight"
+              class="dashboard__insight"
+              [class.dashboard__insight--positive]="insight.tone === 'positive'"
+              [class.dashboard__insight--warning]="insight.tone === 'warning'"
+            >
+              <h3>{{ insight.title }}</h3>
+              <p>{{ insight.description }}</p>
+            </li>
+          </ul>
+        </section>
+      </ng-container>
+    </ng-container>
+  </ng-container>
+
+  <ng-template #noPieData>
+    <p class="dashboard__chart-empty">
+      Pas encore de données suffisantes pour afficher la répartition revenus / dépenses.
+    </p>
+  </ng-template>
+
+  <ng-template #noRevenueData>
+    <p class="dashboard__chart-empty">
+      Enregistrez vos revenus pour visualiser leur évolution dans le temps.
+    </p>
+  </ng-template>
+
+  <ng-template #noExpenseData>
+    <p class="dashboard__chart-empty">
+      Ajoutez des dépenses pour alimenter cette courbe et surveiller vos sorties.
+    </p>
+  </ng-template>
+
+  <ng-template #emptyState>
+    <section class="dashboard__empty">
+      <h2>Commencez par créer vos budgets</h2>
+      <p>
+        Dès qu’un budget ou des transactions seront enregistrés, nous afficherons ici vos indicateurs clés.
+      </p>
+      <a routerLink="/budgets" class="dashboard__button dashboard__button--ghost">
+        Gérer mes budgets
+      </a>
+    </section>
+  </ng-template>
 </section>

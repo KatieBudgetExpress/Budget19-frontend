@@ -1,6 +1,7 @@
 import { Routes } from '@angular/router';
 import { MainLayoutComponent } from './layout/main-layout.component';
 import { authGuard } from './core/guards/auth.guard';
+import { DashboardComponent } from './features/dashboard/dashboard.component';
 
 export const appRoutes: Routes = [
   {
@@ -9,11 +10,8 @@ export const appRoutes: Routes = [
     children: [
       {
         path: 'dashboard',
+        component: DashboardComponent,
         canActivate: [authGuard],
-        loadComponent: () =>
-          import('./features/dashboard/dashboard.component').then(
-            (m) => m.DashboardComponent,
-          ),
         data: {
           title: 'Tableau de bord',
           icon: 'tabler-home',

@@ -44,13 +44,13 @@ export class PosteDetailComponent {
   readonly isSaving = signal<boolean>(false);
   readonly error = signal<string | null>(null);
 
-  private readonly currentPosteId = signal<string | null>(null);
+  private readonly currentPosteId = signal<number | null>(null);
 
   readonly posteForm = this.fb.nonNullable.group({
-    nom: ['', [Validators.required, Validators.maxLength(120)]],
+    name: ['', [Validators.required, Validators.maxLength(120)]],
     description: [''],
-    montant: [0, [Validators.required, Validators.min(0)]],
-    categorie: ['', [Validators.required, Validators.maxLength(80)]],
+    amount: [0, [Validators.required, Validators.min(0)]],
+    category: ['', [Validators.required, Validators.maxLength(80)]],
     dateDebut: ['', [Validators.required]],
     dateFin: [''],
   });
@@ -113,7 +113,7 @@ export class PosteDetailComponent {
               "Impossible d'enregistrer ce poste budgétaire pour le moment.",
             );
             this.notifications.error(
-              "La sauvegarde du poste budgétaire a échoué.",
+              'La sauvegarde du poste budgétaire a échoué.',
             );
             console.error('Failed to create poste', error);
           },
@@ -123,7 +123,7 @@ export class PosteDetailComponent {
     }
 
     const posteId = this.currentPosteId();
-    if (!posteId) {
+    if (posteId === null) {
       this.isSaving.set(false);
       this.error.set(
         'Poste budgétaire introuvable, aucune mise à jour possible.',
@@ -141,7 +141,9 @@ export class PosteDetailComponent {
       .subscribe({
         next: (poste) => {
           this.isSaving.set(false);
-          this.notifications.success('Poste budgétaire mis à jour avec succès.');
+          this.notifications.success(
+            'Poste budgétaire mis à jour avec succès.',
+          );
           this.error.set(null);
 
           if (poste) {
@@ -154,9 +156,9 @@ export class PosteDetailComponent {
         },
         error: (error) => {
           this.isSaving.set(false);
-          this.error.set("La mise à jour du poste budgétaire a échoué.");
+          this.error.set('La mise à jour du poste budgétaire a échoué.');
           this.notifications.error(
-            "Impossible de mettre à jour ce poste budgétaire.",
+            'Impossible de mettre à jour ce poste budgétaire.',
           );
           console.error('Failed to update poste', error);
         },
@@ -179,27 +181,28 @@ export class PosteDetailComponent {
       .pipe(
         map((params) => params.get('id')),
         distinctUntilChanged(),
-        switchMap((id) => {
-          if (!id) {
-            this.error.set('Aucun poste budgétaire sélectionné.');
-            this.isNewMode.set(false);
-            this.currentPosteId.set(null);
-            this.poste.set(null);
-            this.isLoading.set(false);
-            return of<Poste | null>(null);
-          }
-
-          if (id === 'new') {
+        switchMap((idParam) => {
+          if (!idParam || idParam === 'new') {
             this.enterCreationMode();
             return of<Poste | null>(null);
           }
 
+          const parsedId = Number(idParam);
+          if (Number.isNaN(parsedId)) {
+            this.isNewMode.set(false);
+            this.currentPosteId.set(null);
+            this.poste.set(null);
+            this.isLoading.set(false);
+            this.error.set('Identifiant de poste budgétaire invalide.');
+            return of<Poste | null>(null);
+          }
+
           this.isNewMode.set(false);
-          this.currentPosteId.set(id);
+          this.currentPosteId.set(parsedId);
           this.isLoading.set(true);
           this.error.set(null);
 
-          return this.posteService.getById(id).pipe(
+          return this.posteService.getById(parsedId).pipe(
             catchError((error) => {
               console.error('Failed to load poste', error);
               this.error.set(
@@ -238,10 +241,10 @@ export class PosteDetailComponent {
 
   private resetCreationForm(): void {
     this.posteForm.setValue({
-      nom: '',
+      name: '',
       description: '',
-      montant: 0,
-      categorie: '',
+      amount: 0,
+      category: '',
       dateDebut: '',
       dateFin: '',
     });
@@ -251,10 +254,10 @@ export class PosteDetailComponent {
 
   private patchForm(poste: Poste): void {
     this.posteForm.setValue({
-      nom: poste.nom ?? '',
+      name: poste.name ?? '',
       description: poste.description ?? '',
-      montant: poste.montant ?? 0,
-      categorie: poste.categorie ?? '',
+      amount: poste.amount ?? 0,
+      category: poste.category ?? '',
       dateDebut: this.formatDateForInput(poste.dateDebut),
       dateFin: this.formatDateForInput(poste.dateFin),
     });
@@ -267,16 +270,14 @@ export class PosteDetailComponent {
     const description = this.normalizeText(raw.description);
     const dateFin = this.normalizeDate(raw.dateFin);
 
-    const payload = {
-      nom: raw.nom.trim(),
+    return {
+      name: raw.name.trim(),
       description: description ?? undefined,
-      montant: Number(raw.montant),
-      categorie: raw.categorie.trim(),
+      amount: Number(raw.amount),
+      category: raw.category.trim(),
       dateDebut: this.normalizeDate(raw.dateDebut) ?? raw.dateDebut,
       dateFin: dateFin ?? undefined,
     };
-
-    return payload as CreatePostePayload;
   }
 
   private buildUpdatePayload(): UpdatePostePayload {
@@ -284,16 +285,14 @@ export class PosteDetailComponent {
     const description = this.normalizeText(raw.description);
     const dateFin = this.normalizeDate(raw.dateFin);
 
-    const payload = {
-      nom: raw.nom.trim(),
+    return {
+      name: raw.name.trim(),
       description: description ?? undefined,
-      montant: Number(raw.montant),
-      categorie: raw.categorie.trim(),
+      amount: Number(raw.amount),
+      category: raw.category.trim(),
       dateDebut: this.normalizeDate(raw.dateDebut) ?? raw.dateDebut,
       dateFin: dateFin ?? undefined,
     };
-
-    return payload as UpdatePostePayload;
   }
 
   private normalizeDate(value: string | null | undefined): string | null {

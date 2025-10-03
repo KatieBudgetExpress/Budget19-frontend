@@ -26,7 +26,9 @@ export interface BudgetTransaction {
 export interface BudgetCategory {
   id: string;
   name: string;
-  allocation: number;
+  allocation?: number;
+  allocated?: number;
+  spent?: number;
 }
 
 export interface Budget {

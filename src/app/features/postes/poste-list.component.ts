@@ -10,7 +10,7 @@ import {
 import { Router } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { finalize } from 'rxjs';
-import { PosteBudgetaire, PosteService } from '../../core/services/poste.service';
+import { Poste, PosteService } from '../../core/services/poste.service';
 
 @Component({
   standalone: true,
@@ -26,10 +26,10 @@ export class PosteListComponent implements OnInit {
   private readonly destroyRef = inject(DestroyRef);
   private readonly cdr = inject(ChangeDetectorRef);
 
-  postes: PosteBudgetaire[] = [];
+  postes: Poste[] = [];
   loading = false;
   error: string | null = null;
-  deletingPosteId: string | null = null;
+  deletingPosteId: number | null = null;
 
   ngOnInit(): void {
     this.fetchPostes();
@@ -55,41 +55,56 @@ export class PosteListComponent implements OnInit {
           this.cdr.markForCheck();
         },
         error: (error) => {
-          console.error('Impossible de récupérer les postes budgétaires.', error);
+          console.error(
+            'Impossible de récupérer les postes budgétaires.',
+            error,
+          );
           this.error =
-            "Impossible de charger les postes budgétaires pour le moment. Veuillez réessayer plus tard.";
+            'Impossible de charger les postes budgétaires pour le moment. Veuillez réessayer plus tard.';
           this.cdr.markForCheck();
         },
       });
   }
 
-  viewDetail(poste: PosteBudgetaire): void {
+  viewDetail(poste: Poste): void {
     if (!poste?.id) {
       return;
     }
 
-    this.router.navigate(['/postes', poste.id]).catch((error) => {
-      console.error("Navigation vers le détail du poste budgétaire impossible.", error);
+    const posteId = Number(poste.id);
+    if (Number.isNaN(posteId)) {
+      return;
+    }
+
+    this.router.navigate(['/postes', posteId]).catch((error) => {
+      console.error(
+        'Navigation vers le détail du poste budgétaire impossible.',
+        error,
+      );
     });
   }
 
   createPoste(): void {
-    this.router.navigate(['/postes', 'nouveau']).catch((error) => {
-      console.error("Navigation vers la création d’un poste budgétaire impossible.", error);
+    this.router.navigate(['/postes', 'new']).catch((error) => {
+      console.error(
+        "Navigation vers la création d’un poste budgétaire impossible.",
+        error,
+      );
     });
   }
 
-  deletePoste(id: string): void {
-    if (!id) {
+  deletePoste(id: number): void {
+    const posteId = Number(id);
+    if (Number.isNaN(posteId)) {
       return;
     }
 
     this.error = null;
-    this.deletingPosteId = id;
+    this.deletingPosteId = posteId;
     this.cdr.markForCheck();
 
     this.posteService
-      .delete(id)
+      .delete(posteId)
       .pipe(
         takeUntilDestroyed(this.destroyRef),
         finalize(() => {
@@ -99,13 +114,16 @@ export class PosteListComponent implements OnInit {
       )
       .subscribe({
         next: () => {
-          this.postes = this.postes.filter((poste) => poste.id !== id);
+          this.postes = this.postes.filter((poste) => poste.id !== posteId);
           this.cdr.markForCheck();
         },
         error: (error) => {
-          console.error(`Impossible de supprimer le poste budgétaire ${id}.`, error);
+          console.error(
+            `Impossible de supprimer le poste budgétaire ${posteId}.`,
+            error,
+          );
           this.error =
-            "Impossible de supprimer ce poste budgétaire pour le moment. Veuillez réessayer ultérieurement.";
+            'Impossible de supprimer ce poste budgétaire pour le moment. Veuillez réessayer ultérieurement.';
           this.cdr.markForCheck();
         },
       });

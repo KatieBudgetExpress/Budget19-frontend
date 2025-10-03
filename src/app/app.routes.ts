@@ -18,6 +18,30 @@ export const appRoutes: Routes = [
         },
       },
       {
+        path: 'assistant',
+        canActivate: [authGuard],
+        loadComponent: () =>
+          import('./features/assistant/assistant.component').then(
+            (m) => m.AssistantComponent,
+          ),
+        data: {
+          title: 'Assistant budget',
+          icon: 'tabler-magic-wand',
+        },
+      },
+      {
+        path: 'copie-budget',
+        canActivate: [authGuard],
+        loadComponent: () =>
+          import('./features/assistant/copie-budget.component').then(
+            (m) => m.CopieBudgetComponent,
+          ),
+        data: {
+          title: 'Copie de budget',
+          icon: 'tabler-copy',
+        },
+      },
+      {
         path: 'budgets',
         canActivate: [authGuard],
         loadComponent: () =>
@@ -39,18 +63,6 @@ export const appRoutes: Routes = [
         data: {
           title: 'Détail du budget',
           icon: 'tabler-report-money',
-        },
-      },
-      {
-        path: 'conciliation',
-        canActivate: [authGuard],
-        loadComponent: () =>
-          import('./features/conciliation/conciliation.component').then(
-            (m) => m.ConciliationComponent,
-          ),
-        data: {
-          title: 'Conciliation bancaire',
-          icon: 'tabler-arrows-shuffle',
         },
       },
       {

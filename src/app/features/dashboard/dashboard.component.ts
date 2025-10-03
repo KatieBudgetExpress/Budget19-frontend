@@ -6,9 +6,18 @@ import {
   BudgetService,
   BudgetTransaction,
 } from '../../core/services/budget.service';
-import { PieChartComponent } from './components/pie-chart/pie-chart.component';
-import { RevenuChartComponent } from './components/revenu-chart/revenu-chart.component';
-import { DepenseChartComponent } from './components/depense-chart/depense-chart.component';
+import {
+  DashboardPieChartComponent,
+  DashboardPieChartDatum,
+} from './dashboard-pie-chart.component';
+import {
+  DashboardRevenuChartComponent,
+  DashboardTimeSeriesPoint,
+} from './dashboard-revenu-chart.component';
+import {
+  DashboardDepenseChartComponent,
+  DashboardDepensePoint,
+} from './dashboard-depense-chart.component';
 
 type TrendType = 'income' | 'expense';
 
@@ -20,21 +29,10 @@ interface FinancialSummary {
   hasTransactions: boolean;
 }
 
-interface PieChartSlice {
-  label: string;
-  value: number;
-  percentage: number;
-  color: string;
-}
-
-interface PieChartData {
-  total: number;
-  slices: PieChartSlice[];
-}
-
 interface TrendPoint {
   label: string;
   value: number;
+  date: string;
 }
 
 interface Insight {
@@ -75,7 +73,13 @@ interface MonthBucket {
   templateUrl: './dashboard.component.html',
   styleUrls: ['./dashboard.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CommonModule, RouterLink, PieChartComponent, RevenuChartComponent, DepenseChartComponent],
+  imports: [
+    CommonModule,
+    RouterLink,
+    DashboardPieChartComponent,
+    DashboardRevenuChartComponent,
+    DashboardDepenseChartComponent,
+  ],
 })
 export class DashboardComponent {
   private readonly budgetService = inject(BudgetService);
@@ -86,7 +90,6 @@ export class DashboardComponent {
   readonly lastUpdatedAt = this.budgetService.lastUpdatedAt;
 
   private readonly monthsWindow = 6;
-  private readonly piePalette = ['#4f46e5', '#f97316', '#10b981', '#ec4899', '#14b8a6'];
   private readonly fallbackTrendPattern = [0.88, 1.04, 0.96, 1.12, 0.94, 1.06, 0.9, 1.18];
 
   readonly summary = computed<FinancialSummary>(() => {
@@ -251,80 +254,32 @@ export class DashboardComponent {
     };
   });
 
-  readonly pieChartData = computed<PieChartData>(() => {
-    const summary = this.summary();
-    const slices: PieChartSlice[] = [];
-
-    const incomeValue = Math.max(summary.totalIncome, 0);
-    const expenseValue = Math.max(summary.totalExpense, 0);
-    const surplus = summary.balance > 0 ? summary.balance : 0;
-    const deficit = summary.balance < 0 ? Math.abs(summary.balance) : 0;
-
-    if (incomeValue > 0) {
-      slices.push({
-        label: 'Revenus',
-        value: incomeValue,
-        percentage: 0,
-        color: this.piePalette[0],
-      });
-    }
-
-    if (expenseValue > 0) {
-      slices.push({
-        label: 'Dépenses',
-        value: expenseValue,
-        percentage: 0,
-        color: this.piePalette[1],
-      });
-    }
-
-    if (surplus > 0) {
-      slices.push({
-        label: 'Excédent',
-        value: surplus,
-        percentage: 0,
-        color: this.piePalette[2],
-      });
-    } else if (deficit > 0) {
-      slices.push({
-        label: 'Découvert',
-        value: deficit,
-        percentage: 0,
-        color: this.piePalette[3],
-      });
-    }
-
-    if (!slices.length) {
-      slices.push(
-        {
-          label: 'Revenus',
-          value: 0,
-          percentage: 0,
-          color: this.piePalette[0],
-        },
-        {
-          label: 'Dépenses',
-          value: 0,
-          percentage: 0,
-          color: this.piePalette[1],
-        },
-      );
-    }
-
-    const total = slices.reduce((accumulator, slice) => accumulator + slice.value, 0);
-
-    return {
-      total,
-      slices: slices.map((slice) => ({
-        ...slice,
-        percentage: this.toPercentage(slice.value, total),
+  readonly categoryChartData = computed<DashboardPieChartDatum[]>(() =>
+    this.categoryBreakdown()
+      .items.filter((item) => item.value > 0)
+      .map((item) => ({
+        categorie: item.label,
+        montant: item.value,
       })),
-    };
-  });
+  );
 
   readonly revenueTrend = computed<TrendPoint[]>(() => this.buildMonthlyTrend('income'));
 
   readonly expenseTrend = computed<TrendPoint[]>(() => this.buildMonthlyTrend('expense'));
+
+  readonly revenueChartData = computed<DashboardTimeSeriesPoint[]>(() =>
+    this.revenueTrend().map((point) => ({
+      date: point.date,
+      montant: point.value,
+    })),
+  );
+
+  readonly expenseChartData = computed<DashboardDepensePoint[]>(() =>
+    this.expenseTrend().map((point) => ({
+      date: point.date,
+      montant: point.value,
+    })),
+  );
 
   readonly incomeDelta = computed(() => this.computeDeltaPercentage(this.revenueTrend()));
 
@@ -484,10 +439,6 @@ export class DashboardComponent {
     return insight.title;
   }
 
-  hasSeries(series: TrendPoint[]): boolean {
-    return series.some((point) => Math.abs(point.value) > 0.001);
-  }
-
   private buildMonthlyTrend(type: TrendType): TrendPoint[] {
     const budgets = this.budgets();
     const buckets = this.createMonthBuckets(this.monthsWindow);
@@ -531,10 +482,14 @@ export class DashboardComponent {
       });
     }
 
-    return buckets.map((bucket) => ({
-      label: this.formatMonthLabel(bucket.date),
-      value: Math.round(bucket.value * 100) / 100,
-    }));
+    return buckets.map((bucket) => {
+      const isoDate = new Date(Date.UTC(bucket.date.getFullYear(), bucket.date.getMonth(), 1)).toISOString();
+      return {
+        label: this.formatMonthLabel(bucket.date),
+        value: Math.round(bucket.value * 100) / 100,
+        date: isoDate,
+      };
+    });
   }
 
   private createMonthBuckets(count: number): MonthBucket[] {

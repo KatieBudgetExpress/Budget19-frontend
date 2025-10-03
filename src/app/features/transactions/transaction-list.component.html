@@ -74,7 +74,7 @@
                 'transaction-table__amount--negative': transaction.type === 'depense'
               }"
             >
-              {{ transaction.montant | currency:'EUR':'symbol':'1.2-2' }}
+              {{ transaction.montant | currency }}
             </span>
           </td>
           <td data-label="Catégorie">

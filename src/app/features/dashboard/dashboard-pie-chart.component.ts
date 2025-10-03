@@ -1,7 +1,15 @@
-import { ChangeDetectionStrategy, Component, Input, OnChanges, SimpleChanges } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  ElementRef,
+  Input,
+  OnChanges,
+  OnDestroy,
+  SimpleChanges,
+  ViewChild,
+} from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { NgChartsModule } from 'ng2-charts';
-import { ChartData, ChartOptions } from 'chart.js';
+import { Chart, ChartData, ChartDataset, ChartOptions } from 'chart.js';
 import 'chart.js/auto';
 
 export interface DashboardPieChartDatum {
@@ -15,9 +23,9 @@ export interface DashboardPieChartDatum {
   templateUrl: './dashboard-pie-chart.component.html',
   styleUrls: ['./dashboard-pie-chart.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CommonModule, NgChartsModule],
+  imports: [CommonModule],
 })
-export class DashboardPieChartComponent implements OnChanges {
+export class DashboardPieChartComponent implements OnChanges, OnDestroy {
   @Input({ required: true }) data: DashboardPieChartDatum[] = [];
   @Input() currency: string = 'EUR';
 
@@ -25,10 +33,8 @@ export class DashboardPieChartComponent implements OnChanges {
   totalAmount = 0;
 
   private currencyFormatter = this.createCurrencyFormatter(this.currency);
-
-  pieChartOptions: ChartOptions<'pie'> = this.createPieChartOptions();
-
-  pieChartData: ChartData<'pie', number[], string> = {
+  private pieChartOptions: ChartOptions<'pie'> = this.createPieChartOptions();
+  private pieChartData: ChartData<'pie', number[], string> = {
     labels: [],
     datasets: [
       {
@@ -41,6 +47,26 @@ export class DashboardPieChartComponent implements OnChanges {
     ],
   };
 
+  private chartInstance?: Chart<'pie'>;
+  private chartCanvasRef?: ElementRef<HTMLCanvasElement>;
+
+  @ViewChild('chartCanvas', { static: false })
+  set chartCanvas(canvas: ElementRef<HTMLCanvasElement> | undefined) {
+    if (canvas === this.chartCanvasRef) {
+      return;
+    }
+
+    if (!canvas) {
+      this.chartInstance?.destroy();
+      this.chartInstance = undefined;
+      this.chartCanvasRef = undefined;
+      return;
+    }
+
+    this.chartCanvasRef = canvas;
+    this.renderChart();
+  }
+
   ngOnChanges(changes: SimpleChanges): void {
     const currencyChanged = Boolean(changes['currency']);
 
@@ -52,6 +78,13 @@ export class DashboardPieChartComponent implements OnChanges {
     if (changes['data']) {
       this.updateChartData();
     }
+
+    this.renderChart();
+  }
+
+  ngOnDestroy(): void {
+    this.chartInstance?.destroy();
+    this.chartInstance = undefined;
   }
 
   private updateChartData(): void {
@@ -62,17 +95,59 @@ export class DashboardPieChartComponent implements OnChanges {
     this.totalAmount = this.roundAmount(values.reduce((sum, value) => sum + value, 0));
     this.hasData = aggregated.some((item) => item.montant > 0);
 
+    const dataset: ChartDataset<'pie', number[]> = {
+      data: values,
+      backgroundColor: this.buildColorPalette(labels.length),
+      borderWidth: 2,
+      borderColor: '#ffffff',
+      hoverOffset: 12,
+    };
+
     this.pieChartData = {
       labels,
-      datasets: [
-        {
-          data: values,
-          backgroundColor: this.buildColorPalette(labels.length),
-          borderWidth: 2,
-          borderColor: '#ffffff',
-          hoverOffset: 12,
-        },
-      ],
+      datasets: [dataset],
+    };
+  }
+
+  private renderChart(): void {
+    const canvas = this.chartCanvasRef?.nativeElement;
+
+    if (!canvas || !this.hasData) {
+      if (this.chartInstance) {
+        this.chartInstance.destroy();
+        this.chartInstance = undefined;
+      }
+      return;
+    }
+
+    const chartData = this.getPieChartDataForRendering();
+
+    if (!this.chartInstance) {
+      this.chartInstance = new Chart(canvas, {
+        type: 'pie',
+        data: chartData,
+        options: this.pieChartOptions,
+      });
+      return;
+    }
+
+    this.chartInstance.data = chartData;
+    this.chartInstance.options = this.pieChartOptions;
+    this.chartInstance.update();
+  }
+
+  private getPieChartDataForRendering(): ChartData<'pie', number[], string> {
+    const datasets = (this.pieChartData.datasets ?? []).map((dataset) => ({
+      ...dataset,
+      data: [...dataset.data],
+      backgroundColor: Array.isArray(dataset.backgroundColor)
+        ? [...dataset.backgroundColor]
+        : dataset.backgroundColor,
+    })) as ChartDataset<'pie', number[]>[];
+
+    return {
+      labels: [...(this.pieChartData.labels ?? [])],
+      datasets,
     };
   }
 

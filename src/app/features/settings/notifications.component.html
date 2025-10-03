@@ -1,0 +1,116 @@
+<section class="settings-notifications">
+  <header class="settings-notifications__header">
+    <h1 class="settings-notifications__title">Notifications</h1>
+    <p class="settings-notifications__subtitle">
+      Consultez vos alertes et gardez le contrôle sur les dernières activités.
+    </p>
+  </header>
+
+  <div
+    *ngIf="loading()"
+    class="settings-notifications__status"
+    role="status"
+    aria-live="polite"
+  >
+    <span class="settings-notifications__spinner" aria-hidden="true"></span>
+    <span>Chargement des notifications…</span>
+  </div>
+
+  <div
+    *ngIf="error()"
+    class="settings-notifications__status settings-notifications__status--error"
+    role="alert"
+  >
+    <span>{{ error() }}</span>
+    <button
+      type="button"
+      class="settings-notifications__retry"
+      (click)="loadNotifications()"
+    >
+      Réessayer
+    </button>
+  </div>
+
+  <div
+    *ngIf="!loading() && !error() && !hasNotifications()"
+    class="settings-notifications__empty"
+  >
+    <h2>Aucune notification</h2>
+    <p>Vous êtes à jour, aucune notification à afficher pour le moment.</p>
+  </div>
+
+  <div
+    *ngIf="!loading() && !error() && hasNotifications()"
+    class="settings-notifications__table-wrapper"
+  >
+    <table class="settings-notifications__table">
+      <thead>
+        <tr>
+          <th scope="col">Message</th>
+          <th scope="col">Type</th>
+          <th scope="col">Date</th>
+          <th scope="col">Statut</th>
+          <th scope="col" class="settings-notifications__actions-header">
+            Actions
+          </th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr
+          *ngFor="let notification of notifications(); trackBy: trackById"
+          [class.settings-notifications__row--unread]="!notification.read"
+        >
+          <td data-label="Message">
+            <p class="settings-notifications__message">
+              {{ notification.message }}
+            </p>
+          </td>
+          <td data-label="Type">
+            <span
+              class="settings-notifications__type"
+              [ngClass]="{
+                'settings-notifications__type--info': notification.type === 'info',
+                'settings-notifications__type--success': notification.type === 'success',
+                'settings-notifications__type--error': notification.type === 'error'
+              }"
+            >
+              {{ getTypeLabel(notification.type) }}
+            </span>
+          </td>
+          <td data-label="Date">
+            {{ notification.date | date: 'medium' }}
+          </td>
+          <td data-label="Statut">
+            <span
+              class="settings-notifications__status"
+              [ngClass]="{
+                'settings-notifications__status--read': notification.read,
+                'settings-notifications__status--unread': !notification.read
+              }"
+            >
+              {{ notification.read ? 'Lu' : 'Non lu' }}
+            </span>
+          </td>
+          <td data-label="Actions" class="settings-notifications__actions">
+            <button
+              type="button"
+              class="settings-notifications__button"
+              (click)="markAsRead(notification)"
+              [disabled]="notification.read || isMarking(notification.id)"
+            >
+              {{ getMarkAsReadLabel(notification) }}
+            </button>
+            <button
+              type="button"
+              class="settings-notifications__button settings-notifications__button--delete"
+              (click)="deleteNotification(notification)"
+              [disabled]="isDeleting(notification.id)"
+            >
+              {{ getDeleteLabel(notification) }}
+            </button>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</section>

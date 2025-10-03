@@ -1,0 +1,75 @@
+<section class="poste-list">
+  <header class="poste-list__header">
+    <div class="poste-list__headline">
+      <h1 class="poste-list__title">Postes budgétaires</h1>
+      <p class="poste-list__subtitle">
+        Consultez et organisez les postes budgétaires de votre structure.
+      </p>
+    </div>
+    <button type="button" class="poste-list__create" (click)="createPoste()">➕ Nouveau poste</button>
+  </header>
+
+  <div class="poste-list__status" role="status" *ngIf="loading">
+    <span class="poste-list__spinner" aria-hidden="true"></span>
+    <span>Chargement des postes budgétaires…</span>
+  </div>
+
+  <div class="poste-list__status poste-list__status--error" role="alert" *ngIf="!loading && error">
+    <span>{{ error }}</span>
+    <button type="button" class="poste-list__retry" (click)="fetchPostes()">Réessayer</button>
+  </div>
+
+  <div class="poste-list__table-wrapper" *ngIf="postes.length; else posteEmptyState">
+    <table class="poste-table">
+      <thead>
+        <tr>
+          <th scope="col">Nom</th>
+          <th scope="col">Catégorie</th>
+          <th scope="col">Montant</th>
+          <th scope="col">Description</th>
+          <th scope="col" class="poste-table__actions-header">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let poste of postes">
+          <td>
+            <span class="poste-table__name">{{ poste.name }}</span>
+          </td>
+          <td>{{ poste.category || 'Non renseignée' }}</td>
+          <td>
+            <span class="poste-table__amount">
+              {{ poste.amount | currency: 'EUR':'symbol':'1.0-2' }}
+            </span>
+          </td>
+          <td>
+            <span class="poste-table__description">{{ poste.description || '—' }}</span>
+          </td>
+          <td class="poste-table__actions">
+            <button
+              type="button"
+              class="poste-table__button poste-table__button--view"
+              (click)="viewDetail(poste)"
+            >
+              👁️ Voir
+            </button>
+            <button
+              type="button"
+              class="poste-table__button poste-table__button--delete"
+              (click)="deletePoste(poste.id)"
+              [disabled]="deletingPosteId === poste.id"
+            >
+              🗑️ Supprimer
+            </button>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <ng-template #posteEmptyState>
+    <div class="poste-list__empty" *ngIf="!loading && !error">
+      <p>Aucun poste budgétaire n’a encore été créé.</p>
+      <button type="button" class="poste-list__retry" (click)="createPoste()">Créer un premier poste</button>
+    </div>
+  </ng-template>
+</section>

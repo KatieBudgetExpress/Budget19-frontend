@@ -44,6 +44,22 @@ export const appRoutes: Routes = [
         },
       },
       {
+        path: 'postes',
+        canActivate: [authGuard],
+        loadComponent: () =>
+          import('./features/postes/poste-list.component').then(
+            (m) => m.PosteListComponent,
+          ),
+      },
+      {
+        path: 'postes/:id',
+        canActivate: [authGuard],
+        loadComponent: () =>
+          import('./features/postes/poste-detail.component').then(
+            (m) => m.PosteDetailComponent,
+          ),
+      },
+      {
         path: 'profil',
         canActivate: [authGuard],
         loadComponent: () =>

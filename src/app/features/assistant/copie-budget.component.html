@@ -1,0 +1,170 @@
+<section class="copie-budget">
+  <header class="copie-budget__header">
+    <div class="copie-budget__intro">
+      <h1 class="copie-budget__title">Copier un budget existant</h1>
+      <p class="copie-budget__subtitle">
+        Dupliquez un budget pour réutiliser sa configuration et accélérer la création d’une nouvelle
+        enveloppe.
+      </p>
+    </div>
+    <button
+      type="button"
+      class="copie-budget__button copie-budget__button--ghost copie-budget__button--compact"
+      (click)="reloadBudgets()"
+      [disabled]="isLoading() && !budgets().length"
+    >
+      Actualiser
+    </button>
+  </header>
+
+  <div
+    class="copie-budget__state copie-budget__state--loading"
+    *ngIf="isLoading() && !budgets().length"
+  >
+    <span class="copie-budget__spinner" aria-hidden="true"></span>
+    <p>Chargement des budgets disponibles…</p>
+  </div>
+
+  <div
+    class="copie-budget__feedback copie-budget__feedback--error"
+    *ngIf="fetchError() as fetchErrorMessage"
+  >
+    <span class="copie-budget__feedback-icon" aria-hidden="true">⚠️</span>
+    <div>
+      <p class="copie-budget__feedback-title">Un problème est survenu</p>
+      <p class="copie-budget__feedback-message">{{ fetchErrorMessage }}</p>
+    </div>
+  </div>
+
+  <ng-container *ngIf="budgets().length; else emptyState">
+    <p class="copie-budget__helper" *ngIf="selectedBudget() as selected">
+      Le nouveau budget sera créé sous le nom
+      <strong>{{ previewCopyName() }}</strong>
+      avec un montant initial de
+      <strong>{{ selected.amount | currency: selected.currency }}</strong>.
+    </p>
+
+    <ul class="copie-budget__list">
+      <li
+        class="copie-budget__item"
+        *ngFor="let budget of budgets(); trackBy: trackByBudgetId"
+      >
+        <label
+          class="copie-budget__budget"
+          [class.copie-budget__budget--selected]="selectedBudgetId() === budget.id"
+        >
+          <input
+            class="copie-budget__radio"
+            type="radio"
+            name="budgetSource"
+            [value]="budget.id"
+            [checked]="selectedBudgetId() === budget.id"
+            (change)="selectBudget(budget)"
+            [disabled]="isCopying()"
+          />
+
+          <div class="copie-budget__budget-header">
+            <h2 class="copie-budget__budget-name">{{ budget.name }}</h2>
+            <span class="copie-budget__badge">{{ budget.period | titlecase }}</span>
+          </div>
+
+          <p class="copie-budget__meta">
+            {{ budget.category }} • Depuis le {{ budget.startDate | date: 'd MMM y' }}
+          </p>
+
+          <div class="copie-budget__stats">
+            <div class="copie-budget__stat">
+              <span class="copie-budget__stat-label">Montant</span>
+              <span class="copie-budget__stat-value">
+                {{ budget.amount | currency: budget.currency }}
+              </span>
+            </div>
+
+            <div class="copie-budget__stat">
+              <span class="copie-budget__stat-label">Dépensé</span>
+              <span class="copie-budget__stat-value copie-budget__stat-value--muted">
+                {{ budget.spent | currency: budget.currency }}
+              </span>
+            </div>
+
+            <div class="copie-budget__stat">
+              <span class="copie-budget__stat-label">Catégories</span>
+              <span class="copie-budget__stat-value copie-budget__stat-value--muted">
+                {{ budget.categories?.length || 0 }}
+              </span>
+            </div>
+          </div>
+
+          <p class="copie-budget__description" *ngIf="budget.description">
+            {{ budget.description }}
+          </p>
+        </label>
+      </li>
+    </ul>
+  </ng-container>
+
+  <section class="copie-budget__actions">
+    <div
+      class="copie-budget__feedback copie-budget__feedback--error"
+      *ngIf="copyError() as copyErrorMessage"
+    >
+      <span class="copie-budget__feedback-icon" aria-hidden="true">⚠️</span>
+      <div>
+        <p class="copie-budget__feedback-title">Copie impossible</p>
+        <p class="copie-budget__feedback-message">{{ copyErrorMessage }}</p>
+      </div>
+    </div>
+
+    <div
+      class="copie-budget__feedback copie-budget__feedback--success"
+      *ngIf="lastCreatedBudget() as created"
+    >
+      <span class="copie-budget__feedback-icon" aria-hidden="true">✅</span>
+      <div>
+        <p class="copie-budget__feedback-title">Budget copié</p>
+        <p class="copie-budget__feedback-message">
+          {{ created.name }} a été créé avec un montant de
+          {{ created.amount | currency: created.currency }}.
+        </p>
+      </div>
+    </div>
+
+    <div class="copie-budget__buttons">
+      <button
+        type="button"
+        class="copie-budget__button copie-budget__button--ghost"
+        (click)="reloadBudgets()"
+        [disabled]="isLoading() && !budgets().length"
+      >
+        Réactualiser la liste
+      </button>
+
+      <button
+        type="button"
+        class="copie-budget__button copie-budget__button--primary"
+        (click)="copyBudget()"
+        [disabled]="!canCopy()"
+      >
+        <span *ngIf="isCopying(); else copyLabel">Copie en cours…</span>
+        <ng-template #copyLabel>Copier le budget sélectionné</ng-template>
+      </button>
+    </div>
+  </section>
+
+  <ng-template #emptyState>
+    <div class="copie-budget__empty">
+      <h2>Aucun budget disponible</h2>
+      <p>
+        La liste des budgets est vide pour le moment. Créez un budget ou réessayez plus tard.
+      </p>
+      <button
+        type="button"
+        class="copie-budget__button copie-budget__button--ghost"
+        (click)="reloadBudgets()"
+        [disabled]="isLoading()"
+      >
+        Réessayer
+      </button>
+    </div>
+  </ng-template>
+</section>

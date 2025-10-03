@@ -18,6 +18,30 @@ export const appRoutes: Routes = [
         },
       },
       {
+        path: 'assistant',
+        canActivate: [authGuard],
+        loadComponent: () =>
+          import('./features/assistant/assistant.component').then(
+            (m) => m.AssistantComponent,
+          ),
+        data: {
+          title: 'Assistant budget',
+          icon: 'tabler-magic-wand',
+        },
+      },
+      {
+        path: 'copie-budget',
+        canActivate: [authGuard],
+        loadComponent: () =>
+          import('./features/assistant/copie-budget.component').then(
+            (m) => m.CopieBudgetComponent,
+          ),
+        data: {
+          title: 'Copie de budget',
+          icon: 'tabler-copy',
+        },
+      },
+      {
         path: 'budgets',
         canActivate: [authGuard],
         loadComponent: () =>

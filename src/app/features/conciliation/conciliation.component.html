@@ -1,0 +1,514 @@
+<section class="conciliation">
+  <header class="conciliation__header">
+    <div class="conciliation__intro">
+      <p class="conciliation__subtitle">Gestion des opérations</p>
+      <h1 class="conciliation__title">Conciliation bancaire</h1>
+      <p class="conciliation__description">
+        Suivez les étapes pour importer votre relevé, lancer le rapprochement automatique, valider
+        les opérations restantes puis confirmer la conciliation.
+      </p>
+      <p class="conciliation__filename" *ngIf="selectedFileName() as fileName">
+        Dernier fichier sélectionné : <strong>{{ fileName }}</strong>
+      </p>
+    </div>
+
+    <div class="conciliation__context" *ngIf="statement() as statement">
+      <p class="conciliation__context-title">Relevé en cours</p>
+      <ul class="conciliation__context-list">
+        <li>
+          <span>Référence</span>
+          <strong>{{ statement.reference || statement.id }}</strong>
+        </li>
+        <li>
+          <span>Période</span>
+          <strong>
+            {{ statement.startDate | date: 'dd/MM/y' }} – {{ statement.endDate | date: 'dd/MM/y' }}
+          </strong>
+        </li>
+        <li>
+          <span>Nombre d’opérations</span>
+          <strong>{{ statement.operations?.length || 0 }}</strong>
+        </li>
+      </ul>
+    </div>
+  </header>
+
+  <nav class="conciliation__wizard" aria-label="Progression de la conciliation">
+    <ol class="wizard">
+      <li
+        class="wizard__step"
+        *ngFor="let step of steps; let index = index"
+        [class.is-active]="isStepActive(index)"
+        [class.is-completed]="isStepCompleted(index)"
+        [class.is-clickable]="canAccessStep(index)"
+      >
+        <button
+          type="button"
+          class="wizard__step-button"
+          (click)="navigateToStep(index)"
+          [disabled]="!canAccessStep(index)"
+        >
+          <span class="wizard__index">{{ index + 1 }}</span>
+          <span class="wizard__labels">
+            <span class="wizard__title">{{ step.label }}</span>
+            <span class="wizard__description">{{ step.description }}</span>
+          </span>
+        </button>
+      </li>
+    </ol>
+    <div class="wizard__progress">
+      <div class="wizard__progress-bar" [style.width.%]="progress()"></div>
+    </div>
+  </nav>
+
+  <section class="conciliation__content">
+    <ng-container [ngSwitch]="currentStep().key">
+      <form
+        *ngSwitchCase="'import'"
+        class="conciliation__card conciliation__form"
+        (submit)="startImport($event)"
+        novalidate
+      >
+        <h2 class="conciliation__step-title">Importer un relevé bancaire</h2>
+        <p class="conciliation__step-description">
+          Chargez le fichier reçu de votre établissement bancaire afin de lancer le processus de
+          conciliation.
+        </p>
+
+        <div class="conciliation__upload">
+          <label class="conciliation__upload-label" for="conciliation-file">
+            <span class="conciliation__upload-icon" aria-hidden="true">📁</span>
+            <span>
+              <strong>Sélectionnez un fichier bancaire</strong>
+              <small>Formats acceptés : CSV, OFX, QIF, XLS, XLSX, JSON.</small>
+            </span>
+          </label>
+          <input
+            id="conciliation-file"
+            type="file"
+            class="conciliation__upload-input"
+            (change)="onFileSelected($event)"
+            [disabled]="isImporting()"
+            accept=".csv,.ofx,.qif,.xls,.xlsx,.json,.txt"
+          />
+        </div>
+
+        <div class="conciliation__helper">
+          <p>
+            Le fichier doit contenir au minimum la date de l’opération, le libellé et le montant. Une
+            ligne par opération est attendue.
+          </p>
+        </div>
+
+        <div class="conciliation__alert conciliation__alert--error" *ngIf="importError()">
+          {{ importError() }}
+        </div>
+
+        <div class="conciliation__loader" *ngIf="isImporting()">
+          <span class="conciliation__spinner" aria-hidden="true"></span>
+          <p>Import du relevé en cours…</p>
+        </div>
+
+        <div class="conciliation__actions">
+          <button
+            type="submit"
+            class="conciliation__button conciliation__button--primary"
+            [disabled]="isImporting() || !selectedFile()"
+          >
+            Importer le relevé
+          </button>
+        </div>
+      </form>
+
+      <div *ngSwitchCase="'automatic'" class="conciliation__card conciliation__card--padded">
+        <h2 class="conciliation__step-title">Rapprochement automatique</h2>
+        <p class="conciliation__step-description">
+          Nous analysons vos opérations importées et tentons de les rapprocher automatiquement aux
+          transactions existantes.
+        </p>
+
+        <div class="conciliation__alert conciliation__alert--info" *ngIf="!autoMatchExecuted()">
+          Lancez le rapprochement pour obtenir une première proposition d’appariement.
+        </div>
+
+        <div class="conciliation__alert conciliation__alert--error" *ngIf="matchError()">
+          {{ matchError() }}
+        </div>
+
+        <div class="conciliation__loader" *ngIf="isMatching()">
+          <span class="conciliation__spinner" aria-hidden="true"></span>
+          <p>Rapprochement automatique en cours…</p>
+        </div>
+
+        <ng-container *ngIf="statement() as statement">
+          <section class="conciliation__summary">
+            <div class="conciliation__summary-block">
+              <p class="conciliation__summary-title">Période couverte</p>
+              <p class="conciliation__summary-value">
+                {{ statement.startDate | date: 'dd/MM/y' }} – {{ statement.endDate | date: 'dd/MM/y' }}
+              </p>
+            </div>
+            <div class="conciliation__summary-block">
+              <p class="conciliation__summary-title">Nombre d’opérations</p>
+              <p class="conciliation__summary-value">
+                {{ statement.operations?.length || 0 }}
+              </p>
+            </div>
+            <div class="conciliation__summary-block">
+              <p class="conciliation__summary-title">Solde final</p>
+              <p class="conciliation__summary-value">
+                {{
+                  (statement.balanceAfter ?? statement.balance ?? statement.totalCredits ?? 0)
+                    | currency: statement.currency || 'EUR'
+                }}
+              </p>
+            </div>
+          </section>
+
+          <section class="conciliation__stats" *ngIf="autoMatchExecuted()">
+            <div class="conciliation__stats-item">
+              <span class="conciliation__stats-label">Taux de rapprochement</span>
+              <strong class="conciliation__stats-value">{{ autoMatchSummary().rate }} %</strong>
+            </div>
+            <div class="conciliation__stats-item">
+              <span class="conciliation__stats-label">Opérations rapprochées</span>
+              <strong class="conciliation__stats-value">{{ autoMatchSummary().matched }}</strong>
+            </div>
+            <div class="conciliation__stats-item">
+              <span class="conciliation__stats-label">Restant à traiter</span>
+              <strong class="conciliation__stats-value">{{ autoMatchSummary().unmatched }}</strong>
+            </div>
+          </section>
+
+          <section class="conciliation__table" *ngIf="autoMatchExecuted()">
+            <header class="conciliation__table-header">
+              <h3>Opérations rapprochées automatiquement</h3>
+              <p>
+                Vérifiez ces propositions avant de poursuivre la validation manuelle des opérations
+                restantes.
+              </p>
+            </header>
+
+            <table *ngIf="automaticMatches().length > 0; else noAutomaticMatches" class="conciliation__data">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Libellé</th>
+                  <th class="is-numeric">Montant</th>
+                  <th>Transaction liée</th>
+                  <th class="is-numeric">Score</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let operation of automaticMatches(); trackBy: trackByMatchedOperation">
+                  <td>{{ operation.date | date: 'dd/MM/y' }}</td>
+                  <td>
+                    <span class="conciliation__operation-label">{{ operation.label }}</span>
+                    <span class="conciliation__operation-ref" *ngIf="operation.reference">
+                      Réf. {{ operation.reference }}
+                    </span>
+                  </td>
+                  <td class="is-numeric">
+                    {{ operation.amount | currency: statement.currency || 'EUR' }}
+                  </td>
+                  <td>{{ operation.matchedTransactionId || '—' }}</td>
+                  <td class="is-numeric">
+                    {{
+                      operation.matchingScore !== undefined && operation.matchingScore !== null
+                        ? (operation.matchingScore | number: '1.0-0') + ' %'
+                        : '—'
+                    }}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+
+            <ng-template #noAutomaticMatches>
+              <p class="conciliation__empty">
+                Aucune opération n’a été rapprochée automatiquement pour le moment.
+              </p>
+            </ng-template>
+          </section>
+        </ng-container>
+
+        <div class="conciliation__actions">
+          <button
+            type="button"
+            class="conciliation__button conciliation__button--ghost"
+            (click)="navigateToStep(0)"
+            [disabled]="isMatching()"
+          >
+            Revenir à l’import
+          </button>
+          <button
+            type="button"
+            class="conciliation__button conciliation__button--secondary"
+            (click)="launchAutomaticReconciliation()"
+            [disabled]="isMatching()"
+          >
+            {{ autoMatchExecuted() ? 'Relancer le rapprochement automatique' : 'Lancer le rapprochement automatique' }}
+          </button>
+          <button
+            type="button"
+            class="conciliation__button conciliation__button--primary"
+            (click)="goToManualStep()"
+            [disabled]="!autoMatchExecuted() || isMatching()"
+          >
+            Passer à la validation manuelle
+          </button>
+        </div>
+      </div>
+
+      <div *ngSwitchCase="'manual'" class="conciliation__card conciliation__card--padded">
+        <h2 class="conciliation__step-title">Validation manuelle</h2>
+        <p class="conciliation__step-description">
+          Traitez les opérations restantes en indiquant si elles doivent être rapprochées et en
+          complétant les informations nécessaires.
+        </p>
+
+        <section
+          class="conciliation__alert conciliation__alert--info"
+          *ngIf="manualDecisions().length === 0"
+        >
+          Toutes les opérations ont été rapprochées automatiquement. Vous pouvez passer directement
+          à la confirmation.
+        </section>
+
+        <ng-container *ngIf="manualDecisions().length > 0">
+          <header class="conciliation__manual-header">
+            <div>
+              <h3>Opérations à rapprocher</h3>
+              <p>
+                Activez l’option « Rapprocher » lorsque l’opération a été traitée et ajoutez une note
+                si vous décidez de la laisser en suspens.
+              </p>
+            </div>
+            <div class="conciliation__badge-group">
+              <span class="conciliation__badge">
+                {{ manualSelectionStats().included }} rapprochée(s)
+              </span>
+              <span class="conciliation__badge conciliation__badge--warning">
+                {{ manualSelectionStats().pending }} à compléter
+              </span>
+            </div>
+          </header>
+
+          <ul class="conciliation__manual-list">
+            <li
+              class="conciliation__manual-item"
+              *ngFor="let decision of manualDecisions(); trackBy: trackByManualDecision"
+            >
+              <div class="conciliation__manual-head">
+                <div>
+                  <p class="conciliation__manual-label">{{ decision.operation.label }}</p>
+                  <p class="conciliation__manual-meta">
+                    <span>{{ decision.operation.date | date: 'dd/MM/y' }}</span>
+                    <span>
+                      Montant :
+                      {{
+                        decision.operation.amount
+                          | currency: (statement()?.currency || 'EUR')
+                      }}
+                    </span>
+                  </p>
+                </div>
+                <label class="conciliation__toggle">
+                  <input
+                    type="checkbox"
+                    [checked]="decision.include"
+                    (change)="onManualDecisionToggle(decision.operation.id, $any($event.target).checked)"
+                  />
+                  <span>Rapprocher</span>
+                </label>
+              </div>
+
+              <div class="conciliation__manual-grid">
+                <label class="conciliation__field">
+                  <span>Transaction interne</span>
+                  <input
+                    type="text"
+                    [value]="decision.transactionId || ''"
+                    (input)="onManualTransactionChange(decision.operation.id, $any($event.target).value)"
+                    placeholder="Identifiant ou référence"
+                  />
+                </label>
+
+                <label class="conciliation__field conciliation__field--notes">
+                  <span>Notes</span>
+                  <textarea
+                    rows="2"
+                    [value]="decision.notes"
+                    (input)="onManualNoteChange(decision.operation.id, $any($event.target).value)"
+                  ></textarea>
+                </label>
+              </div>
+            </li>
+          </ul>
+        </ng-container>
+
+        <label class="conciliation__field conciliation__field--full">
+          <span>Commentaire global</span>
+          <textarea
+            rows="3"
+            [value]="manualComment()"
+            (input)="onManualCommentChange($any($event.target).value)"
+            placeholder="Ajoutez un commentaire pour contextualiser la conciliation"
+          ></textarea>
+        </label>
+
+        <div class="conciliation__actions">
+          <button
+            type="button"
+            class="conciliation__button conciliation__button--ghost"
+            (click)="navigateToStep(1)"
+          >
+            Retour au rapprochement automatique
+          </button>
+          <button
+            type="button"
+            class="conciliation__button conciliation__button--primary"
+            (click)="proceedToConfirmation()"
+            [disabled]="!isManualStepComplete()"
+          >
+            Continuer vers la confirmation
+          </button>
+        </div>
+      </div>
+
+      <div *ngSwitchCase="'confirmation'" class="conciliation__card conciliation__card--padded">
+        <h2 class="conciliation__step-title">Confirmation finale</h2>
+        <p class="conciliation__step-description">
+          Vérifiez le résumé de la conciliation avant de l’enregistrer définitivement.
+        </p>
+
+        <section class="conciliation__summary conciliation__summary--grid" *ngIf="confirmationSummary() as summary">
+          <div class="conciliation__summary-block">
+            <p class="conciliation__summary-title">Total des opérations</p>
+            <p class="conciliation__summary-value">{{ summary.totalOperations }}</p>
+          </div>
+          <div class="conciliation__summary-block">
+            <p class="conciliation__summary-title">Rapprochées automatiquement</p>
+            <p class="conciliation__summary-value">{{ summary.autoMatchesCount }}</p>
+          </div>
+          <div class="conciliation__summary-block">
+            <p class="conciliation__summary-title">Rapprochées manuellement</p>
+            <p class="conciliation__summary-value">{{ summary.manualIncludedCount }}</p>
+          </div>
+          <div class="conciliation__summary-block">
+            <p class="conciliation__summary-title">Ignorées / à suivre</p>
+            <p class="conciliation__summary-value">{{ summary.manualIgnoredCount }}</p>
+          </div>
+        </section>
+
+        <section class="conciliation__alert conciliation__alert--muted" *ngIf="confirmationSummary().manualComment as globalComment">
+          <h3>Commentaire</h3>
+          <p>{{ globalComment || 'Aucun commentaire ajouté.' }}</p>
+        </section>
+
+        <section class="conciliation__alert conciliation__alert--error" *ngIf="validationError()">
+          {{ validationError() }}
+        </section>
+
+        <form class="conciliation__form" (submit)="submitFinalValidation($event)" novalidate>
+          <label class="conciliation__checkbox">
+            <input
+              type="checkbox"
+              [checked]="acknowledgement()"
+              (change)="onAcknowledgeChange($any($event.target).checked)"
+            />
+            <span>J’atteste que les opérations sélectionnées reflètent fidèlement le relevé bancaire.</span>
+          </label>
+
+          <label class="conciliation__field conciliation__field--full">
+            <span>Commentaire final (optionnel)</span>
+            <textarea
+              rows="3"
+              [value]="finalComment()"
+              (input)="onFinalCommentChange($any($event.target).value)"
+            ></textarea>
+          </label>
+
+          <div class="conciliation__actions">
+            <button
+              type="button"
+              class="conciliation__button conciliation__button--ghost"
+              (click)="navigateToStep(2)"
+              [disabled]="isValidating()"
+            >
+              Retour à la validation manuelle
+            </button>
+            <button
+              type="submit"
+              class="conciliation__button conciliation__button--primary"
+              [disabled]="!canSubmitFinal()"
+            >
+              Confirmer la conciliation
+            </button>
+          </div>
+
+          <div class="conciliation__loader" *ngIf="isValidating()">
+            <span class="conciliation__spinner" aria-hidden="true"></span>
+            <p>Validation en cours…</p>
+          </div>
+        </form>
+
+        <section class="conciliation__result" *ngIf="finalResult() as result">
+          <header class="conciliation__result-header">
+            <h3>Conciliation confirmée</h3>
+            <p>
+              Validé le
+              <strong>
+                {{
+                  result.validatedAt
+                    ? (result.validatedAt | date: 'dd/MM/y à HH:mm')
+                    : (result.summary?.completedAt | date: 'dd/MM/y à HH:mm')
+                }}
+              </strong>
+              <ng-container *ngIf="result.validatedBy">
+                par {{ result.validatedBy }}
+              </ng-container>
+              .
+            </p>
+          </header>
+
+          <div class="conciliation__result-grid">
+            <div>
+              <p class="conciliation__result-label">Opérations rapprochées</p>
+              <p class="conciliation__result-value">
+                {{
+                  result.summary?.matchedAutomatically ??
+                    result.matchedOperations?.length ??
+                    0
+                }}
+              </p>
+            </div>
+            <div>
+              <p class="conciliation__result-label">Rapprochements manuels</p>
+              <p class="conciliation__result-value">
+                {{
+                  result.summary?.matchedManually ??
+                    result.manualDecisions?.length ??
+                    0
+                }}
+              </p>
+            </div>
+            <div>
+              <p class="conciliation__result-label">Écart résiduel</p>
+              <p class="conciliation__result-value">
+                {{
+                  result.summary?.balanceGap !== undefined && result.summary?.balanceGap !== null
+                    ? (result.summary.balanceGap | currency: result.summary?.currency || result.statement?.currency || 'EUR')
+                    : '—'
+                }}
+              </p>
+            </div>
+          </div>
+
+          <p class="conciliation__result-notes" *ngIf="result.notes">
+            {{ result.notes }}
+          </p>
+        </section>
+      </div>
+    </ng-container>
+  </section>
+</section>

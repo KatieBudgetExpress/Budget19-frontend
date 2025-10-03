@@ -1,0 +1,499 @@
+<section class="assistant">
+  <header class="assistant__header">
+    <div class="assistant__headline">
+      <p class="assistant__eyebrow">Assistant budgétaire</p>
+      <h1>Configurez votre budget de départ</h1>
+    </div>
+    <p class="assistant__intro">
+      Cet assistant vous guide pas à pas pour bâtir un budget prévisionnel adapté à votre situation
+      et à vos objectifs financiers.
+    </p>
+  </header>
+
+  <p class="assistant__status assistant__status--error" *ngIf="error()">
+    {{ error() }}
+  </p>
+
+  <p class="assistant__status assistant__status--success" *ngIf="hasCompleted()">
+    Configuration enregistrée ! Vous pouvez transformer ce scénario en budget détaillé quand vous
+    le souhaitez.
+  </p>
+
+  <p class="assistant__loading" *ngIf="isLoading()">Chargement de votre progression…</p>
+
+  <ng-container *ngIf="!isLoading()">
+    <div class="assistant__layout">
+      <aside class="assistant__sidebar">
+        <nav class="assistant__progress" aria-label="Étapes de l’assistant">
+          <ol>
+            <li
+              class="assistant__progress-step"
+              *ngFor="let step of steps; let index = index"
+              [class.assistant__progress-step--active]="index === currentStepIndex()"
+              [class.assistant__progress-step--completed]="index < currentStepIndex()"
+            >
+              <span class="assistant__progress-index">{{ index + 1 }}</span>
+              <div class="assistant__progress-content">
+                <span class="assistant__progress-label">{{ step.label }}</span>
+                <span class="assistant__progress-description">{{ step.description }}</span>
+              </div>
+            </li>
+          </ol>
+        </nav>
+
+        <section class="assistant__snapshot" aria-live="polite">
+          <header>
+            <h2>Résumé prévisionnel</h2>
+            <p>Visualisez l’équilibre de votre budget au fil des étapes.</p>
+          </header>
+          <dl>
+            <div>
+              <dt>Revenus mensuels</dt>
+              <dd>
+                {{ incomesTotal() | currency: profileForm.controls.currency.value : 'symbol-narrow' }}
+              </dd>
+            </div>
+            <div>
+              <dt>Dépenses mensuelles</dt>
+              <dd>
+                {{
+                  expensesTotal() | currency: profileForm.controls.currency.value : 'symbol-narrow'
+                }}
+              </dd>
+            </div>
+            <div>
+              <dt>Solde prévisionnel</dt>
+              <dd
+                [class.assistant__balance-positive]="projectedBalance() >= 0"
+                [class.assistant__balance-negative]="projectedBalance() < 0"
+              >
+                {{
+                  projectedBalance() | currency: profileForm.controls.currency.value : 'symbol-narrow'
+                }}
+              </dd>
+            </div>
+          </dl>
+          <p class="assistant__snapshot-goal" *ngIf="profileForm.controls.monthlySavingsGoal.value">
+            Objectif d’épargne :
+            {{
+              profileForm.controls.monthlySavingsGoal.value
+                | currency: profileForm.controls.currency.value : 'symbol-narrow'
+            }}
+          </p>
+          <p class="assistant__autosave" *ngIf="lastSavedAt()">
+            Progression sauvegardée à {{ lastSavedAt() | date: 'shortTime' }}.
+          </p>
+        </section>
+      </aside>
+
+      <div class="assistant__wizard">
+        <div class="assistant__completion" *ngIf="hasCompleted()">
+          <h2>Assistant terminé</h2>
+          <p>
+            Toutes les informations ont été sauvegardées. Vous pouvez ajuster les données ou générer
+            un budget final basé sur ce scénario.
+          </p>
+        </div>
+
+        <section class="assistant__step" *ngIf="currentStep() === 'profile'">
+          <header class="assistant__step-header">
+            <h2>{{ currentStepDefinition().label }}</h2>
+            <p>{{ currentStepDefinition().description }}</p>
+          </header>
+
+          <form [formGroup]="profileForm" class="assistant__form" novalidate>
+            <fieldset class="assistant__fieldset">
+              <legend>Quel profil décrit le mieux votre foyer&nbsp;?</legend>
+              <div class="assistant__choices">
+                <label
+                  class="assistant__choice"
+                  *ngFor="let option of profileOptions"
+                  [class.assistant__choice--selected]="
+                    profileForm.controls.profileType.value === option.value
+                  "
+                >
+                  <input type="radio" formControlName="profileType" [value]="option.value" />
+                  <span class="assistant__choice-label">{{ option.label }}</span>
+                  <span class="assistant__choice-description">{{ option.description }}</span>
+                </label>
+              </div>
+              <p
+                class="assistant__field-error"
+                *ngIf="
+                  profileForm.controls.profileType.invalid &&
+                  profileForm.controls.profileType.touched
+                "
+              >
+                Sélectionnez un profil pour continuer.
+              </p>
+            </fieldset>
+
+            <div class="assistant__grid">
+              <label class="assistant__field">
+                <span class="assistant__field-label">Taille du foyer</span>
+                <input
+                  type="number"
+                  formControlName="householdSize"
+                  min="1"
+                  max="12"
+                  aria-describedby="assistant-household-hint"
+                />
+                <small id="assistant-household-hint" class="assistant__field-hint">
+                  Nombre total de personnes à prendre en compte.
+                </small>
+                <span
+                  class="assistant__field-error"
+                  *ngIf="
+                    profileForm.controls.householdSize.invalid &&
+                    profileForm.controls.householdSize.touched
+                  "
+                >
+                  Indiquez une valeur comprise entre 1 et 12.
+                </span>
+              </label>
+
+              <label class="assistant__field">
+                <span class="assistant__field-label">Objectif d’épargne mensuel</span>
+                <input
+                  type="number"
+                  formControlName="monthlySavingsGoal"
+                  min="0"
+                  step="50"
+                  aria-describedby="assistant-goal-hint"
+                />
+                <small id="assistant-goal-hint" class="assistant__field-hint">
+                  Facultatif — fixez un repère à atteindre chaque mois.
+                </small>
+              </label>
+
+              <label class="assistant__field">
+                <span class="assistant__field-label">Devise principale</span>
+                <select formControlName="currency">
+                  <option value="EUR">Euro (€)</option>
+                  <option value="USD">Dollar américain ($)</option>
+                  <option value="GBP">Livre sterling (£)</option>
+                  <option value="CAD">Dollar canadien (CAD)</option>
+                  <option value="CHF">Franc suisse (CHF)</option>
+                </select>
+              </label>
+            </div>
+          </form>
+        </section>
+
+        <section class="assistant__step" *ngIf="currentStep() === 'incomes'">
+          <header class="assistant__step-header">
+            <h2>{{ currentStepDefinition().label }}</h2>
+            <p>{{ currentStepDefinition().description }}</p>
+          </header>
+
+          <form [formGroup]="incomesForm" class="assistant__form" novalidate>
+            <div formArrayName="incomes" class="assistant__collection">
+              <div
+                class="assistant__collection-row"
+                *ngFor="let income of incomes.controls; let index = index; trackBy: trackByIndex"
+                [formGroupName]="index"
+              >
+                <div class="assistant__collection-cell assistant__collection-cell--wide">
+                  <label [attr.for]="'income-label-' + index">Source de revenu</label>
+                  <input
+                    [id]="'income-label-' + index"
+                    type="text"
+                    formControlName="label"
+                    placeholder="Salaire principal, allocations…"
+                  />
+                  <span
+                    class="assistant__field-error"
+                    *ngIf="income.controls.label.invalid && income.controls.label.touched"
+                  >
+                    Indiquez un libellé pour ce revenu.
+                  </span>
+                </div>
+
+                <div class="assistant__collection-cell">
+                  <label [attr.for]="'income-amount-' + index">Montant</label>
+                  <input
+                    [id]="'income-amount-' + index"
+                    type="number"
+                    formControlName="amount"
+                    min="0"
+                    step="50"
+                  />
+                  <span
+                    class="assistant__field-error"
+                    *ngIf="income.controls.amount.invalid && income.controls.amount.touched"
+                  >
+                    Saisissez un montant valide.
+                  </span>
+                </div>
+
+                <div class="assistant__collection-cell">
+                  <label [attr.for]="'income-frequency-' + index">Fréquence</label>
+                  <select [id]="'income-frequency-' + index" formControlName="frequency">
+                    <option *ngFor="let frequency of incomeFrequencies" [value]="frequency.value">
+                      {{ frequency.label }}
+                    </option>
+                  </select>
+                </div>
+
+                <button
+                  type="button"
+                  class="assistant__collection-remove"
+                  (click)="removeIncome(index)"
+                  [disabled]="incomes.length === 1"
+                  aria-label="Supprimer ce revenu"
+                >
+                  Retirer
+                </button>
+              </div>
+            </div>
+
+            <div class="assistant__collection-actions">
+              <button
+                type="button"
+                class="assistant__add-button"
+                (click)="addIncome()"
+                aria-label="Ajouter un revenu"
+              >
+                Ajouter un revenu
+              </button>
+            </div>
+
+            <p class="assistant__empty-hint" *ngIf="!hasIncomeEntries()">
+              Ajoutez au moins un revenu avec un montant positif pour continuer.
+            </p>
+          </form>
+        </section>
+
+        <section class="assistant__step" *ngIf="currentStep() === 'expenses'">
+          <header class="assistant__step-header">
+            <h2>{{ currentStepDefinition().label }}</h2>
+            <p>{{ currentStepDefinition().description }}</p>
+          </header>
+
+          <form [formGroup]="expensesForm" class="assistant__form" novalidate>
+            <div formArrayName="expenses" class="assistant__collection">
+              <div
+                class="assistant__collection-row"
+                *ngFor="let expense of expenses.controls; let index = index; trackBy: trackByIndex"
+                [formGroupName]="index"
+              >
+                <div class="assistant__collection-cell assistant__collection-cell--wide">
+                  <label [attr.for]="'expense-label-' + index">Libellé de la dépense</label>
+                  <input
+                    [id]="'expense-label-' + index"
+                    type="text"
+                    formControlName="label"
+                    placeholder="Loyer, assurances, abonnements…"
+                  />
+                  <span
+                    class="assistant__field-error"
+                    *ngIf="expense.controls.label.invalid && expense.controls.label.touched"
+                  >
+                    Indiquez un libellé pour cette dépense.
+                  </span>
+                </div>
+
+                <div class="assistant__collection-cell">
+                  <label [attr.for]="'expense-amount-' + index">Montant</label>
+                  <input
+                    [id]="'expense-amount-' + index"
+                    type="number"
+                    formControlName="amount"
+                    min="0"
+                    step="50"
+                  />
+                  <span
+                    class="assistant__field-error"
+                    *ngIf="expense.controls.amount.invalid && expense.controls.amount.touched"
+                  >
+                    Saisissez un montant valide.
+                  </span>
+                </div>
+
+                <div class="assistant__collection-cell">
+                  <label [attr.for]="'expense-category-' + index">Catégorie</label>
+                  <select [id]="'expense-category-' + index" formControlName="category">
+                    <option *ngFor="let category of expenseCategories" [value]="category.value">
+                      {{ category.label }}
+                    </option>
+                  </select>
+                </div>
+
+                <div class="assistant__collection-cell">
+                  <label [attr.for]="'expense-recurrence-' + index">Récurrence</label>
+                  <select [id]="'expense-recurrence-' + index" formControlName="recurrence">
+                    <option *ngFor="let recurrence of expenseRecurrences" [value]="recurrence.value">
+                      {{ recurrence.label }}
+                    </option>
+                  </select>
+                </div>
+
+                <button
+                  type="button"
+                  class="assistant__collection-remove"
+                  (click)="removeExpense(index)"
+                  [disabled]="expenses.length === 1"
+                  aria-label="Supprimer cette dépense"
+                >
+                  Retirer
+                </button>
+              </div>
+            </div>
+
+            <div class="assistant__collection-actions">
+              <button
+                type="button"
+                class="assistant__add-button"
+                (click)="addExpense()"
+                aria-label="Ajouter une dépense"
+              >
+                Ajouter une dépense
+              </button>
+            </div>
+
+            <p class="assistant__empty-hint" *ngIf="!hasExpenseEntries()">
+              Indiquez au moins une dépense significative pour équilibrer le budget.
+            </p>
+          </form>
+        </section>
+
+        <section class="assistant__step" *ngIf="currentStep() === 'confirmation'">
+          <header class="assistant__step-header">
+            <h2>{{ currentStepDefinition().label }}</h2>
+            <p>{{ currentStepDefinition().description }}</p>
+          </header>
+
+          <div class="assistant__review">
+            <article>
+              <h3>Profil</h3>
+              <ul>
+                <li>
+                  Profil sélectionné :
+                  <strong>{{ getProfileLabel(profileForm.controls.profileType.value) }}</strong>
+                </li>
+                <li>
+                  Taille du foyer :
+                  <strong>{{ profileForm.controls.householdSize.value }}</strong>
+                </li>
+                <li *ngIf="profileForm.controls.monthlySavingsGoal.value">
+                  Objectif d’épargne :
+                  <strong>
+                    {{
+                      profileForm.controls.monthlySavingsGoal.value
+                        | currency: profileForm.controls.currency.value : 'symbol-narrow'
+                    }}
+                  </strong>
+                </li>
+                <li>
+                  Devise :
+                  <strong>{{ profileForm.controls.currency.value }}</strong>
+                </li>
+              </ul>
+            </article>
+
+            <article>
+              <h3>Revenus</h3>
+              <ul>
+                <ng-container *ngIf="getReviewIncomes() as reviewIncomes">
+                  <li
+                    *ngFor="let income of reviewIncomes; let index = index; trackBy: trackByIndex"
+                  >
+                    <span class="assistant__review-label">{{ income.label }}</span>
+                    <span class="assistant__review-value">
+                      {{ income.amount | currency: profileForm.controls.currency.value : 'symbol-narrow' }}
+                      · {{ getFrequencyLabel(income.frequency) }}
+                    </span>
+                  </li>
+                  <li *ngIf="reviewIncomes.length === 0" class="assistant__review-empty">
+                    Aucun revenu renseigné.
+                  </li>
+                </ng-container>
+              </ul>
+            </article>
+
+            <article>
+              <h3>Dépenses</h3>
+              <ul>
+                <ng-container *ngIf="getReviewExpenses() as reviewExpenses">
+                  <li
+                    *ngFor="let expense of reviewExpenses; let index = index; trackBy: trackByIndex"
+                  >
+                    <span class="assistant__review-label">{{ expense.label }}</span>
+                    <span class="assistant__review-value">
+                      {{
+                        expense.amount | currency: profileForm.controls.currency.value : 'symbol-narrow'
+                      }}
+                      · {{ getCategoryLabel(expense.category) }}
+                      · {{ getRecurrenceLabel(expense.recurrence) }}
+                    </span>
+                  </li>
+                  <li *ngIf="reviewExpenses.length === 0" class="assistant__review-empty">
+                    Aucune dépense renseignée.
+                  </li>
+                </ng-container>
+              </ul>
+            </article>
+          </div>
+
+          <div class="assistant__review-summary">
+            <div>
+              <span>Total des revenus</span>
+              <strong>
+                {{ incomesTotal() | currency: profileForm.controls.currency.value : 'symbol-narrow' }}
+              </strong>
+            </div>
+            <div>
+              <span>Total des dépenses</span>
+              <strong>
+                {{ expensesTotal() | currency: profileForm.controls.currency.value : 'symbol-narrow' }}
+              </strong>
+            </div>
+            <div>
+              <span>Solde prévisionnel</span>
+              <strong
+                [class.assistant__balance-positive]="projectedBalance() >= 0"
+                [class.assistant__balance-negative]="projectedBalance() < 0"
+              >
+                {{
+                  projectedBalance() | currency: profileForm.controls.currency.value : 'symbol-narrow'
+                }}
+              </strong>
+            </div>
+          </div>
+        </section>
+      </div>
+    </div>
+
+    <footer class="assistant__footer">
+      <button
+        type="button"
+        class="assistant__secondary"
+        (click)="goToPrevious()"
+        [disabled]="isFirstStep() || isSaving()"
+      >
+        Précédent
+      </button>
+
+      <button
+        type="button"
+        class="assistant__primary"
+        *ngIf="!isLastStep()"
+        (click)="nextStep()"
+        [disabled]="isSaving()"
+      >
+        Suivant
+      </button>
+
+      <button
+        type="button"
+        class="assistant__primary assistant__primary--validate"
+        *ngIf="isLastStep()"
+        (click)="completeWizard()"
+        [disabled]="isSaving()"
+      >
+        <ng-container *ngIf="!isSaving(); else savingLabel">Valider</ng-container>
+      </button>
+      <ng-template #savingLabel>Validation…</ng-template>
+    </footer>
+  </ng-container>
+</section>

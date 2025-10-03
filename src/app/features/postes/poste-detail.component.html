@@ -1,0 +1,113 @@
+<section class="poste-detail">
+  <header class="poste-detail__header">
+    <h1 class="poste-detail__title">
+      {{ isNewMode() ? 'Créer un poste budgétaire' : (poste()?.nom || 'Poste budgétaire') }}
+    </h1>
+    <button type="button" class="poste-detail__back" (click)="onBack()">
+      ↩️ Retour vers la liste
+    </button>
+  </header>
+
+  <p *ngIf="error()" class="poste-detail__error-message">
+    {{ error() }}
+  </p>
+
+  <p *ngIf="isLoading()" class="poste-detail__loading">
+    Chargement du poste budgétaire…
+  </p>
+
+  <form
+    *ngIf="!isLoading()"
+    [formGroup]="posteForm"
+    (ngSubmit)="onSubmit()"
+    class="poste-detail__form"
+    novalidate
+  >
+    <div class="poste-detail__field">
+      <label for="poste-nom">Nom</label>
+      <input id="poste-nom" type="text" formControlName="nom" required />
+      <p class="poste-detail__field-error" *ngIf="controls.nom.touched && controls.nom.invalid">
+        Le nom du poste est requis.
+      </p>
+    </div>
+
+    <div class="poste-detail__field">
+      <label for="poste-description">Description</label>
+      <textarea
+        id="poste-description"
+        rows="3"
+        formControlName="description"
+        placeholder="Description du poste (optionnel)"
+      ></textarea>
+    </div>
+
+    <div class="poste-detail__field">
+      <label for="poste-montant">Montant (€)</label>
+      <input
+        id="poste-montant"
+        type="number"
+        min="0"
+        step="0.01"
+        formControlName="montant"
+        required
+      />
+      <p
+        class="poste-detail__field-error"
+        *ngIf="controls.montant.touched && controls.montant.invalid"
+      >
+        Saisissez un montant valide supérieur ou égal à 0.
+      </p>
+    </div>
+
+    <div class="poste-detail__field">
+      <label for="poste-categorie">Catégorie</label>
+      <input id="poste-categorie" type="text" formControlName="categorie" required />
+      <p
+        class="poste-detail__field-error"
+        *ngIf="controls.categorie.touched && controls.categorie.invalid"
+      >
+        La catégorie est obligatoire.
+      </p>
+    </div>
+
+    <div class="poste-detail__dates">
+      <div class="poste-detail__field">
+        <label for="poste-date-debut">Date de début</label>
+        <input id="poste-date-debut" type="date" formControlName="dateDebut" required />
+        <p
+          class="poste-detail__field-error"
+          *ngIf="controls.dateDebut.touched && controls.dateDebut.invalid"
+        >
+          La date de début est requise.
+        </p>
+      </div>
+
+      <div class="poste-detail__field">
+        <label for="poste-date-fin">Date de fin</label>
+        <input id="poste-date-fin" type="date" formControlName="dateFin" />
+      </div>
+    </div>
+
+    <div class="poste-detail__actions">
+      <button
+        type="submit"
+        class="poste-detail__primary"
+        [disabled]="posteForm.invalid || isSaving()"
+      >
+        <ng-container *ngIf="!isSaving(); else saving">
+          💾 Enregistrer
+        </ng-container>
+        <ng-template #saving>Enregistrement…</ng-template>
+      </button>
+
+      <button
+        type="button"
+        class="poste-detail__secondary"
+        (click)="onBack()"
+        [disabled]="isSaving()"
+      >
+        ↩️ Retour vers la liste
+      </button>
+    </div>
+  </form>
+</section>

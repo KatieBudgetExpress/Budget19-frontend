@@ -42,6 +42,18 @@ export const appRoutes: Routes = [
         },
       },
       {
+        path: 'conciliation',
+        canActivate: [authGuard],
+        loadComponent: () =>
+          import('./features/conciliation/conciliation.component').then(
+            (m) => m.ConciliationComponent,
+          ),
+        data: {
+          title: 'Conciliation bancaire',
+          icon: 'tabler-arrows-shuffle',
+        },
+      },
+      {
         path: 'postes',
         canActivate: [authGuard],
         loadComponent: () =>
